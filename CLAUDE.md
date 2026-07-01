@@ -94,3 +94,29 @@ pre-registered plan, this was the last attempt on this gate family; any further 
 recall at this depth needs a structurally different mechanism (e.g. explicit key-addressed
 memory) and its own fresh thread doc, not another gate variant. See
 `docs/threads/11-dual-gate-spectral-recurrence.md`'s dated addendum.
+
+As of 2026-07-07: moved to the next untouched portfolio item, thread 2 (criticality-guided
+initialization, priority 3). Built mean-field/edge-of-chaos numerics (`chi_1(sigma_w2,
+sigma_b2)`, depth scale `xi=1/|log(chi_1)|` via Gauss-Hermite quadrature; cross-checked
+against the analytically-exact `sigma_b2=0` case and an independent Monte Carlo derivative
+estimate before trusting it) and a plain unnormalized tanh MLP, then ran the pre-registered
+depth x `sigma_w2` sweep (13x13 grid, matched LR/seeds, modular arithmetic, "trainable" =
+loss target within a 150-step budget). **Prediction A falsified exactly as
+pre-registered**: the empirical trainable-depth boundary is nearly flat (depth 8-16 across
+nearly the whole grid) while `xi` spans ~9 orders of magnitude. An Opus review (re-ran the
+numerics and several cells itself, reproduced results to every digit) traced this to three
+named confounds rather than a harness bug: the task (modular arithmetic) doesn't need
+depth, so added depth is a pure handicap regardless of criticality; the LR grid saturates
+at its own ceiling for deep nets; and a binary loss threshold inverts the ranking right at
+the boundary given only 150 steps. Re-measured with the theory-appropriate diagnostic
+instead (init-time gradient-flow *decay/growth length*, not raw magnitude or
+loss-reaching — the same metric swap thread 1 needed once already), both the review and my
+own independent spot-check found the length peaks at criticality with the correct
+decay-to-growth sign flip — but my own re-check found the review's "~2x constant factor"
+framing is optimistic (one point gave ~9x, traced to per-seed init-noise dominating the
+depth trend at that `sigma_w2` with this seed count). **Verdict for the pre-registered
+claim: falsified as specified. Not closed as a negative result** — the qualitative
+signal-propagation mechanism looks real, but the quantitative "small constant factor" claim
+needs its own freshly pre-registered follow-up (bigger seed count, per-`sigma_w2`-matched
+depth grid) before it counts as supported. Not yet started. See
+`docs/threads/02-criticality-guided-init.md`'s dated addendum for the full account.

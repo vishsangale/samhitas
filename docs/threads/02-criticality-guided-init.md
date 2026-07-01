@@ -97,3 +97,88 @@ one-off explanation of an existing architecture.
 
 Not yet run. Priority 3 (demoted from the original draft's priority-1 slot after review —
 the derivation cost was previously undersold; run after threads 6 and 1).
+
+**Post-hoc note, 2026-07-07 (`harness/meanfield.py`, `models/deep_mlp.py`,
+`scripts/thread02_criticality_sanity.py`): prediction A falsified exactly as
+pre-registered, but for reasons that decouple the *loss-based* operationalization from the
+theory's actual claim — not chased further under this label, needs its own fresh thread.**
+
+Built the mean-field numerics (`chi_1(sigma_w2, sigma_b2)`, `xi = 1/|log(chi_1)|` via
+Gauss-Hermite quadrature, root-finding `q*` by bisection rather than plain fixed-point
+iteration — iteration's convergence rate is governed by `chi_1` itself, so it's slowest
+exactly at criticality, "critical slowing down," caught during smoke-testing before any
+numbers were reported). Cross-checked three ways before trusting it: exact match to the
+analytically-derivable `sigma_b2=0` special case (critical `sigma_w2=1.0` to 8 decimal
+places), an independent Monte Carlo estimate of the actual correlation-map derivative
+(agreed within MC noise), and the expected qualitative Poole et al. trend (critical
+`sigma_w2` rises monotonically with `sigma_b2`).
+
+Ran the pre-registered protocol: `sigma_b2=0.1` fixed, 13-point `sigma_w2` grid bracketing
+the theory's own derived `sigma_w2*=1.9861` on both sides, 13-point geometric depth grid
+(4 to 256), modular arithmetic (p=17), 5-point LR grid x 3 seeds x 150 Adam steps per
+cell, "trainable" = training loss <= 1.0 within budget. 2535 configs, ~77 min CPU.
+
+**Result: the empirical (sigma_w2, depth) trainability boundary is nearly flat.** It sits
+at depth 8-16 for almost the entire grid, including right at the exact critical point
+(`xi` ~ 2.9e10, i.e. theoretically near-unbounded trainable depth) and at the grid's
+extreme edges (`xi` as low as ~4-6) — `xi` spans about 9 orders of magnitude across the
+grid while the empirical boundary moves by at most ~3x. **Falsified as literally
+specified** ("matches up to a small constant factor" cannot survive a 9-orders-of-magnitude
+vs. 3x mismatch).
+
+Sent the full result to an independent Opus 4.8 review before drawing any conclusion, per
+this repo's process. The review re-derived the harness numerics itself (confirmed correct
+via its own independent checks) and live-re-ran 7 cells, reproducing the stored results to
+every digit — not a harness bug. It then named three concrete, verified confounds that
+decouple the *loss-reaching* metric from the theory's actual signal-propagation claim:
+
+1. **The task doesn't need depth.** Reach rate is ~100% at depth 6-8 for essentially every
+   `sigma_w2`, and 0% at depth >=32 for essentially every `sigma_w2` — modular addition is
+   shallow-solvable, so added depth is a pure handicap regardless of criticality. There's
+   no regime in this task where extra depth helps, which is the regime the theory is
+   actually about.
+2. **The LR grid saturates at its own ceiling.** Among cells that reached target, the
+   winning LR was consistently the grid maximum (0.01) — deeper nets are being cut off by
+   the LR grid's own edge, not by criticality.
+3. **The binary threshold inverts the ranking right at the boundary.** At depth 16, the
+   exact critical point's best final loss (1.184) just misses the 1.0 cutoff while the
+   `sigma_w2=3.0` chaotic-edge point passes — a threshold artifact, not a real trainability
+   difference; 150 steps is also short enough that deep-net optimization has little room to
+   express any criticality benefit before the shallow-solvable-task ceiling dominates.
+
+**The theory's actual claim (a signal-propagation *depth scale*, not "does a fixed-budget
+Adam run hit a loss target") looks more supported when tested with the right diagnostic —
+same lesson thread 1 already learned once (task accuracy was the wrong metric there too,
+replaced by a gradient-flow diagnostic).** The review measured the init-time gradient-flow
+*decay/growth length* (fit `log||d loss/dW_1||` vs. depth, not raw magnitude) and reported
+a length constant within roughly a constant ~2x factor of theory `xi` on both the ordered
+and chaotic sides, peaking at criticality with the correct decay-to-growth sign flip.
+
+**I independently spot-checked this specific claim myself** (5 `sigma_w2` points, 12
+seeds, depths 4-128, before writing any of this into the permanent record) rather than
+taking the review's positive framing at face value, symmetric to the review not taking my
+original write-up at face value. The qualitative pattern reproduced: empirical length
+peaks near criticality (44.3 vs. 6.75-18.5 on the ordered side of the same range) and the
+sign flips correctly. But the precise "~2x constant factor" is optimistic as a general
+characterization — at `sigma_w2=2.15` (`xi=29.8`) my fit gave a length of 280 (ratio ~9x,
+not ~2x), traced directly to per-seed noise: individual init-time gradient norms at that
+point span roughly 50x across 12 seeds at a single depth, comparable to or larger than the
+actual depth-trend signal over the tested range, so a naive log-linear fit is unstable
+there with this seed count. The qualitative mechanism (peak at criticality, correct
+decay/growth sign flip, order-of-magnitude-plus improvement in propagation length near
+criticality vs. far from it) is real and consistent across both my check and the review's.
+The specific quantitative "small constant factor" claim is not yet cleanly established —
+it needs more seeds and/or a depth range individually matched to each `sigma_w2`'s own
+`xi` (points with large `xi` need proportionally deeper grids to resolve; points with
+`chi_1` very close to 1 have a weak trend that per-seed init noise can dominate) before
+being reported as a verified quantitative match.
+
+**Verdict for this thread's specific pre-registered claim: falsified as specified** (the
+loss-based operationalization). **Not closing the underlying idea as a negative result** —
+per this repo's own discipline (don't retrofit a falsified prediction; a genuinely
+different operationalization needs its own fresh pre-registration, not a retroactive
+metric swap under this thread's existing claim), a follow-up thread testing the
+gradient-flow depth-scale claim specifically — with a properly designed per-`sigma_w2`
+depth grid and enough seeds to resolve the trend against per-seed init noise, pre-
+registered with its own numeric pass/fail band *before* that run — is the natural next
+step, not yet started.

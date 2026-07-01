@@ -17,22 +17,29 @@ experiments/
   models/
     mlp.py              # MuPMLP: SP vs muP parametrization, per-layer-type LR groups -- built
     linear_recurrence.py  # h_t=Ah_{t-1}+Bx_t, free/orthogonal/diag_lowrank A -- built
+    gated_linear_recurrence.py  # thread 9: single shared retention gate -- built
+    dual_gate_recurrence.py     # thread 11: independent read/write gates -- built
+    deep_mlp.py          # thread 2: unnormalized tanh MLP, configurable init variance -- built
   harness/
     flops.py            # analytic FLOP counting (6*fan_in*fan_out/sample/layer) -- built
     train.py             # train_one(): single (param, width, lr, seed) run -- built
     report.py           # save_run(), summarize_sweep() (LR-drift-across-width) -- built
     gradient_flow.py    # first/last-timestep gradient-norm ratio, 1 fwd+bwd pass -- built
+    meanfield.py         # thread 2: chi_1/xi via Gauss-Hermite quadrature -- built
   scripts/
     thread06_mup_sanity.py, thread06_mup_widerange.py  # dev smoke tests -- built
     thread01_stability_sanity.py  # dev smoke test, see finding below -- built
     thread01_orthogonal_boundary.py  # closed-form boundary check, see finding below -- built
+    thread09_gate_recall_sanity.py, thread10_curriculum_sanity.py,
+    thread11_dual_gate_sanity.py  # gate-family sub-line, see findings below -- built
+    thread02_criticality_sanity.py  # depth x sigma_w2 sweep, see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
     tasks/convdist_task.py (deferred thread 3), symmetry_gen.py (deferred thread 5)
     harness/scaling_sweep.py   # 4-6 point width/depth/data sweep + trend fit
     harness/curvature.py       # Fisher/K-FAC condition number + flatness proxy (threads 7, 8)
-    models/ blocks for threads 2, 4
+    models/ blocks for thread 4
 ```
 
 ## Smoke-test finding v2 (2026-07-02, CPU, `scripts/thread06_mup_sanity.py`)
@@ -174,6 +181,34 @@ planned gate variant; a further attempt needs a structurally different mechanism
 thread doc, not another gate tweak. Full account in
 `docs/threads/11-dual-gate-spectral-recurrence.md`'s dated addendum.
 
+## Thread 2 finding (2026-07-07, CPU, `scripts/thread02_criticality_sanity.py`)
+
+Built mean-field/edge-of-chaos numerics (`harness/meanfield.py`: `chi_1(sigma_w2,
+sigma_b2)`, depth scale `xi=1/|log(chi_1)|`, via Gauss-Hermite quadrature with a bisection
+root-finder for `q*` -- plain fixed-point iteration converges too slowly right at
+criticality) and a plain unnormalized tanh MLP (`models/deep_mlp.py`). Ran the
+pre-registered protocol: `sigma_b2=0.1`, 13-point `sigma_w2` grid bracketing the theory's
+own critical point, 13-point geometric depth grid (4-256), modular arithmetic, matched LR
+grid/seeds, "trainable" = loss <= target within a 150-step budget. **Falsified as
+pre-registered**: the empirical (sigma_w2, depth) trainable boundary is nearly flat (depth
+8-16 across nearly the whole grid) while the theory's `xi` spans ~9 orders of magnitude.
+An Opus 4.8 review (re-ran the numerics and 7 cells itself, reproduced results to every
+digit) traced this to three named confounds that decouple the *loss-reaching* metric from
+the theory's actual claim: the task doesn't need depth (added depth is a pure handicap
+regardless of criticality), the LR grid saturates at its own ceiling for deep nets, and the
+binary loss threshold inverts the ranking right at the boundary given only 150 steps. When
+tested with the theory-appropriate diagnostic instead (init-time gradient-flow *decay/
+growth length*, not raw magnitude or loss) -- the same fix thread 1 needed once already --
+both the review and my own independent spot-check (5 points, 12 seeds) found the length
+peaks at criticality with the correct decay-to-growth sign flip, though my own re-check
+found the review's "~2x constant factor" framing is optimistic (one point gave ~9x, traced
+to per-seed init-noise dominating the depth trend at that `sigma_w2` with this seed count).
+**Verdict for the pre-registered claim: falsified as specified.** Not closed as a negative
+result -- the qualitative signal-propagation mechanism looks real, but the quantitative
+"small constant factor" claim needs a properly designed, freshly pre-registered follow-up
+(bigger seed count, per-`sigma_w2`-matched depth grid) before it counts as supported. Full
+account in `docs/threads/02-criticality-guided-init.md`'s dated addendum.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
@@ -205,7 +240,8 @@ thread doc, not another gate tweak. Full account in
 
 ## Next step
 
-Fix `gradient_flow.py` to track raw gradient magnitude alongside the ratio (needed to
-distinguish "exploded" from "vanished," per thread 1's smoke-test finding above), then
-extend thread 1's eps/seq_len grids for a real cross-parameterization read. Before running
-thread 6 for real (as opposed to its smoke tests above), address its task/metric caveat.
+Not yet decided: either pre-register and build the gradient-flow-depth-scale follow-up to
+thread 2 (bigger seed count, per-`sigma_w2`-matched depth grid, per its dated addendum
+above), or move to the next untouched portfolio item (optimal-control integrators,
+priority 4). Threads 1 and 6 are closed/parked for now; the gate-family sub-line (9/10/11)
+is closed as a negative result; see `RESEARCH.md` section 8 for the full status.

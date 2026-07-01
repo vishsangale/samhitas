@@ -143,7 +143,7 @@ preserved in this repo's history; the concrete changes it produced:
 |---|--------|--------------|--------------------------|---------------------|
 | 1 | [muP-style hyperparameter transfer](docs/threads/06-mup-hparam-transfer.md) | Tensor Programs / muP (infinite-width limits) | LR optimal at width W stays within 2x of optimal at k*W under the derived scaling rule; naive parameterization drifts by 10x+ | Low — this *is* the scale-transfer methodology, made explicit |
 | 2 | [Stability-constrained recurrence](docs/threads/01-stability-constrained-recurrence.md) | Control theory, Lyapunov stability, Koopman operators | Depth-vs-spectral-bound relationship (linear regime) holds across different structured parameterizations, not just one construction | Low — general stability constraint, parallel-scan friendly |
-| 3 | [Criticality-guided initialization](docs/threads/02-criticality-guided-init.md) | Mean-field theory / statistical mechanics (pointwise, unnormalized layers only) | Empirical (sigma, depth) trainability boundary matches the theory's derived `xi(sigma)` depth-scale curve | Low — a derivation procedure, not a fixed prior |
+| 3 | [Criticality-guided initialization](docs/threads/02-criticality-guided-init.md) — **prediction A (loss-based) falsified 2026-07-07, gradient-flow-depth-scale follow-up not yet pre-registered** | Mean-field theory / statistical mechanics (pointwise, unnormalized layers only) | Empirical (sigma, depth) trainability boundary matches the theory's derived `xi(sigma)` depth-scale curve | Low — a derivation procedure, not a fixed prior |
 | 4 | [Optimal-control integrators for depth](docs/threads/04-optimal-control-integrators.md) | Pontryagin maximum principle, ODE view of ResNets, numerical integrator theory | On a synthetic smooth-target task (small-step regime), required depth drops with integrator order per truncation-error theory, FLOP-honest | Low — still dense matmul stacks; likely falsified outside the constructed small-step regime |
 | 5 | [Fisher/K-FAC-preconditioned optimization](docs/threads/08-natural-gradient-preconditioning.md) | Information geometry, natural gradient, K-FAC | Fisher condition number near init predicts steps-to-target-loss ranking across architectures; preconditioning benefit scales with how ill-conditioned the architecture is | Low — general optimization-geometry statement |
 | 6 | [PAC-Bayes / flatness as design target](docs/threads/07-pac-bayes-flatness.md) | PAC-Bayes bounds, loss-landscape flatness | A cheap flatness proxy ranks architecturally distinct models (at matched train loss) in the same order as their actual test gap | Low — landscape-geometry measurement, not a layer |
@@ -246,9 +246,38 @@ on this gate family; any further attempt needs a structurally different mechanis
 explicit key-addressed memory) and its own fresh thread doc. Full account in
 `docs/threads/11-dual-gate-spectral-recurrence.md`'s dated addendum.
 
-Other threads (2, 4, 5/8 per the priority table) are untouched — still just written up in
+**Thread 2 (criticality-guided initialization, priority 3): prediction A falsified exactly
+as pre-registered, but the loss-based operationalization looks like the wrong test of the
+theory — not closed as a negative result.** Built mean-field/edge-of-chaos numerics
+(`chi_1(sigma_w2, sigma_b2)`, depth scale `xi=1/|log(chi_1)|`, cross-checked against the
+analytically-exact `sigma_b2=0` case and an independent Monte Carlo derivative estimate)
+and a plain unnormalized tanh MLP, then ran the pre-registered depth x `sigma_w2` sweep
+(13x13 grid, matched LR/seeds, modular arithmetic, "trainable" = loss target within a
+150-step budget). Result: the empirical trainable-depth boundary is nearly flat (depth
+8-16 across nearly the whole grid) while `xi` spans ~9 orders of magnitude — falsified as
+specified. An Opus 4.8 review (re-ran the numerics and several cells itself) traced this to
+three named confounds, not a harness bug: the task doesn't need depth (added depth is a
+pure handicap regardless of criticality), the LR grid saturates at its own ceiling for deep
+nets, and a binary loss threshold inverts the ranking right at the ordered/chaotic boundary
+given only 150 steps. When re-measured with the theory-appropriate diagnostic instead
+(init-time gradient-flow *decay/growth length*, not raw magnitude or loss-reaching — the
+same fix thread 1 needed once already), both the review and my own independent spot-check
+found the length peaks at criticality with the correct sign flip, though my own re-check
+found the review's "~2x constant factor" characterization is optimistic (one point gave
+~9x, traced to per-seed init-noise dominating the depth trend with this seed count).
+**Verdict for the pre-registered claim: falsified as specified.** The qualitative
+signal-propagation mechanism looks real; the quantitative "small constant factor" claim
+needs its own freshly pre-registered follow-up (bigger seed count, per-`sigma_w2`-matched
+depth grid) before it counts as supported — not started yet. Full account in
+`docs/threads/02-criticality-guided-init.md`'s dated addendum.
+
+Other threads (4, 5/8 per the priority table) are untouched — still just written up in
 `docs/threads/`, no code.
-4. Proceed through the rest of the priority table in order — criticality-guided init
-   (priority 3), optimal-control integrators (priority 4), Fisher/K-FAC preconditioning
-   (priority 5), PAC-Bayes/flatness (priority 6) — revisiting the two deferred threads
-   only once their blocking issues are resolved on paper.
+
+**Immediate next step:** either (a) design and pre-register the gradient-flow-depth-scale
+follow-up to thread 2 (a fresh thread doc, per this repo's own rule that a differently-
+operationalized claim needs its own pre-registration, not a retrofit), or (b) move on to
+the next untouched item in the priority table — optimal-control integrators (priority 4),
+Fisher/K-FAC preconditioning (priority 5), PAC-Bayes/flatness (priority 6) — revisiting the
+two deferred threads only once their blocking issues are resolved on paper. Not yet decided
+which.
