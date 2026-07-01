@@ -25,6 +25,7 @@ experiments/
   scripts/
     thread06_mup_sanity.py, thread06_mup_widerange.py  # dev smoke tests -- built
     thread01_stability_sanity.py  # dev smoke test, see finding below -- built
+    thread01_orthogonal_boundary.py  # closed-form boundary check, see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
@@ -85,11 +86,30 @@ every eps/length tested; diag_lowrank tracks it closely with a small, consistent
 gap (~1.3x in failure-boundary sequence length) well inside the pre-registered
 factor-of-2 bound; and the free/constrained asymmetry is now dramatic and well-supported --
 at the longest tested length, 5 of 7 free seeds exploded (one to literal float infinity)
-while 2 vanished, vs. near-zero seed variance for both constrained parameterizations. Task
-accuracy remains exactly chance-level even after the vocab fix -- a separate, deeper issue
-(shared key/value embedding table + no positional signal, which a linear time-invariant
-recurrence structurally can't use to distinguish token roles) that doesn't affect the
-gradient-flow result but is still open.
+while 2 vanished, vs. near-zero seed variance for both constrained parameterizations.
+
+Task accuracy stayed exactly chance-level even after the vocab fix. A follow-up review
+(asked to check the diagnosis, not just the fix) found the original explanation above --
+shared embedding table, no positional signal -- was itself wrong: position *is* visible to
+a linear recurrence (a token's contribution depends on it through the matrix power `A^k`).
+The real obstruction is that the whole model is end-to-end linear, and recall needs a
+nonlinear comparison ("does this key match the query?"); proved by construction that two
+sequences with identical stored pairs but different queries differ in the final state by
+exactly a fixed linear function of the query alone, independent of what was stored. Not
+fixable inside this thread without leaving its own pre-registered linear-recurrence scope
+-- `eval_acc` is dropped as a tracked metric here rather than "fixed." See the corrected
+addendum in the thread doc for the full account.
+
+## Orthogonal boundary finding (2026-07-05, CPU, `scripts/thread01_orthogonal_boundary.py`)
+
+Orthogonal stayed healthy across the *entire* range tested above (up to seq_len=385) at
+eps in {0.005, 0.002}, so its actual failure boundary was never observed. Since
+`ratio_first_over_last = (1-eps)^(seq_len-1)` exactly for orthogonal, the crossing point
+has a closed form (`L* = 1 + ln(0.1)/ln(1-eps)`) and needs no training loop to check --
+39 seconds for 90 configs. Measured crossing matched the closed-form prediction almost
+exactly at both eps values (460.4 predicted vs. bracketed between 447/475 measured;
+1151.1 predicted vs. 1151/1185 measured) -- the cleanest quantitative confirmation of the
+linear-regime prediction so far. Full writeup in the thread doc's 2026-07-05 addendum.
 
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 

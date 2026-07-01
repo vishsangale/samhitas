@@ -72,7 +72,11 @@ not claim anything about downstream capability, which keeps it testable at small
 - Task: associative recall / selective copy (see `docs/methodology.md`).
 - Compare: (a) unconstrained linear recurrence, (b) spectral-constrained recurrence at 2-3
   different `eps` values, matched FLOPs and matched tuning sweep.
-- Measure: max trainable depth/length, gradient norm ratio curves, task accuracy.
+- Measure: max trainable depth/length, gradient norm ratio curves. (Task accuracy was
+  originally listed here too; dropped per the 2026-07-04 post-hoc note below -- a strictly
+  linear recurrence + linear readout cannot solve associative recall regardless of
+  training, a scope conflict rather than something to fix, so accuracy isn't a meaningful
+  signal for this thread and isn't tracked going forward.)
 
 ## Compute budget
 
@@ -193,20 +197,59 @@ from the review's suggested 10 to fit a ~15-minute CPU budget):
   wild and unpredictable in both direction and magnitude, while the constrained variants'
   behavior is essentially deterministic given eps, exactly the "predictable vs. uncontrolled
   tail risk" distinction this thread's premise is about.
-- **Task accuracy is still exactly chance-level (0.00198 measured vs. 1/512=0.00195
-  theoretical) even after the vocab fix** -- a separate, deeper task-design issue, not
-  corrected here: keys and values share one embedding table with no positional/role
-  signal, and a *linear time-invariant* recurrence applies the identical per-step update
-  regardless of position, so it has no mechanism to distinguish "this token is a key" from
-  "this token is a value" from dynamics alone. This doesn't affect the gradient-flow result
-  (a property of the matrix, independent of whether the task is solvable), but means
-  `eval_acc` in this repo's results so far should be read as inert, not as evidence either
-  way, until the task is fixed (separate key/value embedding tables, or an explicit
-  positional/parity signal).
+- **Task accuracy is exactly chance-level (0.00198 measured vs. 1/512=0.00195 theoretical)
+  even after the vocab fix, and it is not fixable within this thread's scope.** The
+  original explanation here (role-collision from a shared key/value embedding table) was
+  itself wrong and got corrected by a second Opus 4.8 review, asked specifically to check
+  the diagnosis before any fix was implemented: position is *not* invisible to this
+  recurrence -- because it's linear, `h_T = sum_t A^(T-1-t) B*embed(x_t)`, so a token's
+  contribution provably depends on its position through the matrix power (verified: same
+  token at position 0 vs. 1 differs by exactly the `1-eps` factor in norm). The real
+  obstruction is that the *entire model* (recurrence + linear readout) is an end-to-end
+  linear function of the input sequence, and associative recall requires a content-based
+  comparison ("does this key equal the query?"), which is inherently nonlinear/conditional.
+  Proof by construction: two sequences with identical stored key-value pairs but different
+  queries produce final states differing by exactly a *fixed linear function of the query
+  embedding alone* -- entirely independent of what was stored. A linear model cannot
+  implement lookup, period; neither of the two fixes floated in the note above (separate
+  embedding tables, an added positional signal) would change this, since both preserve
+  linearity. This is a genuine scope conflict, not a bug: the thread's falsifiable claim
+  requires the recurrence to stay linear (that's the only regime where "spectral radius"
+  is a single well-defined number), and solving recall requires leaving that regime. `eval_acc`
+  is accordingly dropped as a tracked metric for this thread -- it was never part of either
+  pre-registered prediction, and the gradient-flow result is unaffected (confirmed: it's a
+  property of `A`'s spectrum alone, independent of task-solvability, so nothing already
+  logged needs to be re-run). A learnable recall task, if wanted, belongs in a separate
+  thread built around a nonlinear/gated mechanism -- out of scope here by construction.
 
 Still not the pre-registered verdict (fixed HIDDEN=64, single task family, 7 not the
 methodology's usual >=3-but-more-is-better seed count, single held-fixed low_rank=4), but
 this is the first genuinely clean, mutually-consistent result across both falsifiable
-predictions in this thread's doc. Next real gaps: fix the recall task's learnability
-issue, and extend orthogonal's eps grid smaller / seq_len grid longer to actually find its
-failure boundary at eps<=0.005 rather than running off the end of the tested range.
+predictions in this thread's doc.
+
+**Post-hoc note, 2026-07-05 (`thread01_orthogonal_boundary.py`), orthogonal's failure
+boundary at eps in {0.005, 0.002}, previously unmeasured.** For orthogonal,
+`ratio_first_over_last = (1-eps)^(seq_len-1)` exactly (verified to 3-4 decimal places in
+the prior run), so the healthy/unhealthy crossing (ratio=0.1) has a closed-form
+prediction: `L* = 1 + ln(0.1)/ln(1-eps)`. No training loop needed for this -- the
+gradient-flow diagnostic is a single forward+backward pass, so bracketing `L*` at 5 seeds
+across 9 lengths per eps took 39 seconds total. Result:
+
+- eps=0.005: predicted `L*=460.4`; measured fully healthy at 447, fully unhealthy at 475 --
+  the prediction lands almost exactly between the tightest bracket tested.
+- eps=0.002: predicted `L*=1151.1`; measured fully healthy at 1151 (ratios 0.100-0.103,
+  right at the 0.1 edge), fully unhealthy at 1185 -- the closed-form prediction landed
+  essentially exactly on the true crossing point.
+
+This is the cleanest quantitative confirmation of the linear-regime prediction in this
+thread so far: not just "trainable range scales with 1/eps" qualitatively, but the exact
+closed-form crossing point, correct to within the grid's resolution, at two different eps
+values three orders of magnitude apart in sequence length (460 vs. 1151). Combined with
+the 2026-07-04 cross-parameterization result (diag_lowrank tracking orthogonal within the
+pre-registered factor-of-2 bound) and the free/constrained predictability asymmetry, all
+three of this thread's originally-scoped measurements now have clean, mutually consistent
+support. Remaining gaps before a real verdict: still CPU/toy scale, single task family
+(recall's accuracy is dropped as a metric but the sequence-construction/embedding
+machinery is still the only task exercised), and diag_lowrank's own boundary hasn't had
+the same closed-form-bracketing treatment (it lacks orthogonal's exact analytic form, but
+its measured effective_decay_rate could be used the same way).
