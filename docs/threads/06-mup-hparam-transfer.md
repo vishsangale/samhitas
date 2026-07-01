@@ -87,4 +87,20 @@ its value is instrumental (validating the repo's core methodology), not novelty.
 
 ## Status
 
-Not yet run. Priority 1 — build first.
+Not yet run for real. Priority 1 — build first.
+
+**Post-hoc note, 2026-07-01 (harness smoke test, not the pre-registered run):** a CPU-scale
+smoke test of the harness (`experiments/scripts/thread06_mup_sanity.py`, widths 32/128/512,
+~4K train examples, 150 steps) confirmed the code path works end to end but produced a
+non-informative LR-transfer signal — the task saturates across most of the LR grid at this
+size, and Adam's own per-parameter normalization appears to mask width-scaling effects at
+such small width, so the "best LR" argmin was noisy rather than tracking a real
+trainability boundary (SP showed *less* drift than muP in this run, opposite the
+prediction, which reads as a metric/scale problem, not evidence against the theory). Per
+this repo's pre-registration rule, this does not change the prediction above or count as a
+verdict. It does inform how the real run should be designed: use width multiples large
+enough to be unambiguous (the pre-registered k in {4, 8, 16} should be applied to a
+not-tiny base width, not 32), consider a harder task than modular arithmetic that doesn't
+saturate across the whole LR grid, and consider tracking training stability / steps-to-
+target-loss rather than final-loss argmin, which is a weak signal on any task easy enough
+to reach near-zero loss under many configurations.
