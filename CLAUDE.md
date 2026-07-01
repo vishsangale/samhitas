@@ -210,5 +210,33 @@ al./Dinh et al./Andriushchenko et al. for thread 7) — same "near-guaranteed a 
 low-information" logic that already deferred thread 3. **Decision at end of session: start
 the next work with idea I1 (muP coordinate check) from the review's ranked list — cheapest
 (minutes of CPU), most decisive, and unblocks thread 6, which the rest of the portfolio's
-"falsify small, trust the trend" premise depends on. Not yet started — no code, no thread
-doc for it exists yet.**
+"falsify small, trust the trend" premise depends on.**
+
+As of 2026-07-07 (next session): idea I1 was built and run as thread 14
+(`docs/threads/14-mup-coordinate-check.md`). Pre-registered a standard muP coordinate check
+(per-layer-type activation scale vs. width, at init and after up to 10 Adam steps at a fixed
+aggressive `base_lr=0.3`, widths 64-4096). Full grid ran in ~9s CPU. **Falsified as
+literally specified** — muP failed its own `|slope|<0.15` flatness bar (output_layer ~-1 at
+every checkpoint; hidden layers drifted to 0.3-0.85 by step 10) — but SP failed dramatically
+as the intended positive control (loss to ~405 by width 4096 vs. muP's flat ~3.7), and an
+independent Opus review (re-ran the code, reproduced every number bit-for-bit) traced both
+muP "failures" to a mis-specified pre-registered bar, not a bug: the output layer's ~-1
+slope at init is the arithmetically necessary, intended consequence of muP's documented
+`base_width/width` readout multiplier (and relaxes toward 0 under training, exactly as
+theory predicts); the hidden-layer drift is an artifact of the deliberately-aggressive pilot
+LR and vanishes at typical LR (`<=0.01`, verified by an added robustness sweep). **Verdict:
+no implementation bug found — the muP forward/backward scaling machinery is mechanically
+sound, positively supporting thread 6's task/metric-artifact hypothesis** (grokking
+dynamics, not a broken scaling rule). No fix needed before further thread-6 work; thread 6
+itself stays parked (its real GPU-scale run is still not started), but the implementation-
+bug explanation for its adverse smoke reads is now closed off with a decisive, reproduced
+answer. See the thread 14 doc's dated addendum for the full account.
+
+**Next step: idea I2 (+ I5) from the portfolio review's ranked list** — a finite-width
+fluctuation test (Hanin-Nica) that turns the criticality sub-line's residual chaotic-phase
+anomaly (threads 12/13) into a fresh, sharp falsifiable prediction: does `Var[log
+||grad||]` grow linearly with depth at a rate `~1/width`, and does the mean-vs-median slope
+gap match the log-normal identity that would quantitatively explain threads 12/13's
+2.7-4x undershoot? All infrastructure (`meanfield.py`, `deep_mlp.py`, gradient-flow hooks)
+already exists from threads 12/13; cost estimated at well under 1 CPU-hour. Needs its own
+pre-registered thread doc before any code. Not yet started.

@@ -327,17 +327,34 @@ gradient tracking), not a fourth regression-estimator variant. Full account in
 Other threads (4, 5/8 per the priority table) are untouched — still just written up in
 `docs/threads/`, no code.
 
-**Immediate next step:** a full-portfolio review (2026-07-07, independent code/design
-meta-review plus four literature reviews) is now on record in
-`docs/reviews/2026-07-07-portfolio-review.md`. It corrects several recorded framings (see
-dated notes in threads 6/10/11/13), gives literature verdicts on the untouched threads
-(4: genuinely open, run amended; 8: likely falsified as stated, salvage with controls; 7:
-strongly predicted false as written, only the symmetry-corrected variant is worth a fresh
-thread), and ends with a ranked next-step list. Top of that ranking, all CPU-cheap and each
-closing or correcting something already on the record: (1) a muP coordinate check to
-unblock thread 6, (2) a finite-width fluctuation test (Hanin-Nica) that turns the
-criticality sub-line's residual chaotic-phase anomaly into a fresh falsifiable prediction,
-(3) the generous-budget gate check thread 11's review specified but never ran; then (4) a
-new recall-mechanism thread (two-layer composition / short-conv / DeltaNet-style state)
-carrying thread 9's still-deferred prediction B. Each item needs its own pre-registered
-thread doc before code, per `docs/methodology.md`. None started yet.
+A full-portfolio review (2026-07-07, independent code/design meta-review plus four
+literature reviews) is on record in `docs/reviews/2026-07-07-portfolio-review.md`. It
+corrects several recorded framings (see dated notes in threads 6/10/11/13), gives
+literature verdicts on the untouched threads (4: genuinely open, run amended; 8: likely
+falsified as stated, salvage with controls; 7: strongly predicted false as written, only
+the symmetry-corrected variant is worth a fresh thread), and ends with a ranked next-step
+list: (1) a muP coordinate check to unblock thread 6, (2) a finite-width fluctuation test
+(Hanin-Nica) for the criticality sub-line's residual chaotic-phase anomaly, (3) the
+generous-budget gate check thread 11's review specified but never ran, (4) a new
+recall-mechanism thread carrying thread 9's still-deferred prediction B.
+
+**Thread 14 (rank-1 item, muP coordinate check) built and run 2026-07-07: falsified as
+specified, but an Opus review resolved it decisively in muP's favor.** The pre-registered
+`|slope|<0.15` flatness bar failed literally (output_layer slope ~-1 at every checkpoint;
+hidden layers drifted to 0.3-0.85 by step 10) — but SP failed dramatically as the intended
+positive control (loss to ~405 by width 4096 vs. muP's flat ~3.7), and an independent Opus
+review (re-ran the code, reproduced every number bit-for-bit) traced both muP "failures" to
+a mis-specified bar rather than a bug: the output-layer's ~-1 slope at init is the
+arithmetically necessary, intended consequence of muP's documented `base_width/width`
+readout multiplier (and relaxes toward 0 under training, exactly as theory predicts); the
+hidden-layer drift is an artifact of the deliberately-aggressive pilot LR (0.3) and
+vanishes at typical LR (<=0.01, verified by an added robustness sweep). **Verdict: no
+implementation bug found — the muP forward/backward scaling machinery is mechanically
+sound, positively supporting thread 6's task/metric-artifact hypothesis** (grokking
+dynamics, not a broken scaling rule) over an implementation-bug explanation. No fix needed
+before further thread-6 work. See `docs/threads/14-mup-coordinate-check.md`'s dated
+addendum for the full account.
+
+**Immediate next step:** rank-2 item from the portfolio review — a finite-width fluctuation
+test (idea I2, Hanin-Nica) for the criticality sub-line's residual chaotic-phase anomaly.
+Needs its own pre-registered thread doc before code. Not yet started.

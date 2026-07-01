@@ -35,6 +35,7 @@ experiments/
     thread02_criticality_sanity.py  # depth x sigma_w2 sweep, see finding below -- built
     thread12_gradient_flow_depth_scale.py  # grad-flow length vs xi, see finding below -- built
     thread13_robust_gradient_flow.py  # Theil-Sen version of thread 12, see finding below -- built
+    thread14_mup_coordinate_check.py  # idea I1, see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
@@ -254,6 +255,24 @@ start closer to theory's fixed point, or per-layer gradient tracking), not a fou
 regression-estimator variant. Full account in
 `docs/threads/13-robust-gradient-flow-depth-scale.md`'s dated addendum.
 
+## Thread 14 finding (2026-07-07, CPU, `scripts/thread14_mup_coordinate_check.py`) — resolves thread 6's implementation-vs-task-artifact question
+
+Portfolio review's rank-1 idea (I1): standard muP coordinate check -- per-layer-type
+mean(|activation|) vs. width (64 to 4096), at init and after up to 10 Adam steps at one
+fixed aggressive `base_lr=0.3`, for both `sp` and `mup`. Full grid ran in ~9s CPU.
+**Falsified as literally specified** (muP failed the pre-registered `|slope|<0.15`
+flatness bar), but SP failed dramatically as the intended positive control (loss to ~405 by
+width 4096 vs. muP's flat ~3.7), and an independent Opus review (re-ran the code, matched
+every number bit-for-bit) found both muP "failures" are explained by a mis-specified bar,
+not a bug: the output layer's ~-1 log-log slope at every checkpoint is the arithmetically
+necessary, intended consequence of muP's documented `base_width/width` readout multiplier
+(and relaxes toward 0 under training, as theory predicts); the hidden-layer drift is an
+artifact of the deliberately-aggressive pilot LR and vanishes at typical LR (`<=0.01`, per
+an added robustness sweep). **Verdict: no implementation bug found -- the muP scaling
+machinery is mechanically sound, positively supporting thread 6's task/metric-artifact
+hypothesis** over an implementation-bug explanation. Full account in
+`docs/threads/14-mup-coordinate-check.md`'s dated addendum.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
@@ -285,12 +304,12 @@ regression-estimator variant. Full account in
 
 ## Next step
 
-The criticality-guided-init measurement-refinement sub-line (thread 2 -> 12 -> 13) is now
+The criticality-guided-init measurement-refinement sub-line (thread 2 -> 12 -> 13) is
 closed, mirroring the gate-family sub-line (9/10/11). A full-portfolio review
-(`docs/reviews/2026-07-07-portfolio-review.md`) has since ranked the candidate next steps:
-(1) muP coordinate check (unblocks thread 6), (2) finite-width fluctuation test for the
-criticality anomaly, (3) generous-budget gate check, (4) a new recall-mechanism thread
-(composition / short-conv / DeltaNet-style state, carrying thread 9's deferred prediction
-B) — each needing its own pre-registered thread doc before code. It also recorded
-corrections to threads 6/10/11/13's write-ups (see their dated 2026-07-07 notes). Threads
-1 and 6 are closed/parked for now; see `RESEARCH.md` section 8 for the full status.
+(`docs/reviews/2026-07-07-portfolio-review.md`) ranked the candidate next steps; rank-1
+(muP coordinate check, thread 14) is now done -- no implementation bug found, thread 6
+stays parked but its adverse reads are now attributed to the task, not the scaling code.
+Remaining ranked items: (2) finite-width fluctuation test for the criticality anomaly, (3)
+generous-budget gate check, (4) a new recall-mechanism thread (composition / short-conv /
+DeltaNet-style state, carrying thread 9's deferred prediction B) — each needing its own
+pre-registered thread doc before code. See `RESEARCH.md` section 8 for the full status.

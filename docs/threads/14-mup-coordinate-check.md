@@ -122,5 +122,78 @@ repo's from-scratch `MuPMLP` implementation and task.
 
 ## Status
 
-Not yet run. Pre-registered 2026-07-07 (session-label date; see `docs/reviews/
-2026-07-07-portfolio-review.md`'s bookkeeping note on doc-date-vs-commit-date drift).
+Run 2026-07-07 (session-label date). **Falsified as specified** -- muP did not clear the
+pre-registered flatness bar -- but an independent Opus review, which re-ran the code from
+scratch and reproduced every number bit-for-bit, found the failure is fully explained by
+two identified miscalibrations in the pre-registered bar itself, not by an implementation
+defect. See the dated post-hoc note below.
+
+**Post-hoc note, 2026-07-07 (Opus review):** Full grid (2 parametrizations x 7 widths x 5
+checkpoints, `base_lr=0.3`) ran in ~9s CPU. Raw result: SP failed as a strong, clean
+positive control (`hidden_1` slope +1.999 at t=1, `output_layer` +2.956 at t=1, loss
+blowing from 3.7 to ~405 across the width grid by t=10) -- exactly the known SP failure
+mode the check exists to detect. But muP also failed the literal `|slope| < 0.15`
+flatness bar: `output_layer` slope sits at ~-1 at *every* checkpoint including t=0 (before
+any training step), and `input_layer`/`hidden_0`/`hidden_1` drift from near-flat at t<=1 to
+`|slope|` 0.3-0.85 by t=10.
+
+Per this repo's rule, the pre-registered bar is not edited after seeing this -- the
+literal verdict is **falsified**. But the Opus review (re-ran the driver standalone,
+independently re-derived every layer's activation by hand-replicating `forward()` without
+hooks and got a max difference of `0.0` against the hook-based measurements, verified
+`log_log_slope()` against synthetic power laws, and ran an additional LR-robustness sweep
+at `base_lr` in `{0.3, 0.1, 0.05, 0.01, 0.001}` not in the original pre-registration) traced
+both apparent failures to specific, checkable causes rather than a bug:
+
+1. **The output-layer criterion was the wrong bar, not evidence of a defect.** The
+   pre-multiplier output activation is empirically width-invariant (mean|.| ~0.04-0.047
+   across the whole width grid); the measured post-multiplier quantity is that constant
+   times muP's documented `base_width/width` forward multiplier, so a slope of exactly
+   `-1` at init is the *arithmetically necessary, intended* consequence of the parametrization
+   table this repo's `MuPMLP` already implements (a "nonzero-readout-init" muP variant whose
+   output is designed to vanish at init as width grows, matching the standard
+   `mup.MuReadout` convention with `readout_zero_init=False`). Supporting evidence this is a
+   feature, not a bug: at a moderate LR (0.1 or 0.05) the output slope *relaxes from -1
+   toward 0* as training proceeds (e.g. base_lr=0.1: -0.994 -> -0.066 -> -0.142 by t=10) --
+   exactly muP's prediction that the vanishing-at-init contribution gets progressively
+   dominated by a width-invariant, Theta(1) learned update. A genuinely broken readout
+   scaling would not produce that clean relaxation.
+2. **The hidden/input-layer drift is an aggressive-pilot-LR transient, not a persistent
+   scaling defect.** The review's LR-robustness sweep found the drift is strongly,
+   monotonically LR-dependent: at the pilot's `base_lr=0.3`, `hidden_1`'s worst `|slope|`
+   is 0.853 (fails); at 0.1 it's 1.486 (fails worse); at 0.01 it drops to 0.137 (**passes**
+   the pre-registered `<0.15` bar); at 0.001 it's 0.008 (flat). Input layer shows the same
+   pattern (0.327 -> 0.256 -> 0.148(pass) -> 0.005 across the same LR sequence). Mechanism:
+   `base_lr=0.3` is a genuinely enormous Adam LR (typical Adam LR is 1e-3 to 1e-2, and this
+   pilot value was deliberately chosen aggressive specifically to make SP misbehave
+   visibly) -- muP's flatness guarantee is an asymptotic, small-perturbation-per-step
+   statement, and large first steps push activations through a nonlinear, width-correlated
+   transient that is not present at typical LR. If this were a real width-scaling exponent
+   error it would persist or worsen at smaller LR; instead it vanishes, which is the
+   signature of a transient, not a defect. (Also noted: even at `base_lr=0.3` in the
+   original run, muP's *loss* stayed essentially flat across width -- 3.759 to 3.699 at
+   t=10 -- while SP exploded to ~405; the width-stability muP promises at the loss level
+   held throughout, even while the coordinate-level activation reading was mid-transient.)
+3. **The driver's mechanics are correct** -- independently re-verified, no bug found in
+   `measure_layer_scales()`'s forward hooks or `log_log_slope()`'s OLS fit.
+
+**Bottom-line verdict (Opus review, adopted here):** no new muP implementation bug found.
+The literal pre-registered verdict stands as **falsified as specified** (muP did not clear
+`|slope| < 0.15` for every layer/step as written), but the failure is attributable to a
+mis-specified bar (wrong theoretical expectation for the output layer; too-aggressive read
+LR for the hidden-layer flatness claim), not to a defect in the forward/backward scaling
+implementation. This corroborates the prior static verification of the Adam LR-multiplier
+table and **positively supports thread 6's leading task/metric-artifact hypothesis**
+(modular-arithmetic grokking dynamics / LR-argmin noise, not a broken scaling rule) as the
+explanation for thread 6's adverse smoke-test reads. There is no implementation fix that
+needs to happen before thread 6's real (GPU-scale, non-algorithmic-task) run.
+
+Per the review's suggestion: a fully *clean* pass/fail coordinate-check record would need
+its own fresh pre-registration with a corrected output-layer criterion (test for slope near
+`-1` at init and relaxation toward `0` under training, not flatness) and a non-aggressive
+read LR (`<=0.01`) for the hidden-layer flatness claim. Not pursued as a separate thread for
+now -- the substantive question I1 was built to answer (is there an undetected muP
+implementation bug blocking thread 6?) already has a decisive, reproduced answer (no), which
+is the actionable output; a relabeled "thread 15" would mostly re-confirm the same
+conclusion with tidier numbers rather than test anything new. Revisit only if a future
+thread-6 run reopens the implementation-bug question specifically.
