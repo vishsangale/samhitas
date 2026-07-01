@@ -1,8 +1,21 @@
-# Thread 4: Optimal-control integrators for depth
+# Thread 4 (priority 4): Optimal-control integrators for depth
 
 **Math source:** Pontryagin's Maximum Principle (PMP), the ODE view of residual networks
 (a ResNet is a discretized `dh/dt = f(h, t; theta)`), numerical integration theory (Euler
 vs. Runge-Kutta vs. symplectic integrators, local/global truncation error orders).
+
+> **Caveat added after review, read before building.** The ODE/truncation-error argument
+> is an asymptotic statement as the step size `Δt → 0`, which requires the residual
+> branch's contribution to be *small* relative to the state (`h_{l+1} = h_l + Δt·f(h_l)`
+> with small `Δt`). Standard *trained* ResNets typically do not satisfy this — residual
+> branches are usually O(1), not small — so the premise may simply not hold for ordinary
+> trained depth, and prior work on higher-order/RK-style ResNet blocks reports gains that
+> are marginal and inconsistent at best. The honest prior going in is that this thread is
+> likely to get falsified on a standard depth/vision setup. The synthetic-smooth-target-
+> function task is the one setting where the small-step premise is actually plausible by
+> construction (you control the target's smoothness and can keep per-step updates small),
+> so that experiment is promoted to the primary test and the CIFAR-10 variant is secondary
+> exploration, not the load-bearing evidence.
 
 ## Motivation
 
@@ -39,11 +52,14 @@ architecture and the thread is falsified.
 
 ## Minimal experiment
 
-- Implement plain-residual, 2-stage, and 4-stage integrator blocks reusing the same
-  per-stage function, matched parameter count per stage.
-- Small task (CIFAR-10 subset or synthetic regression with a known smooth target function,
-  which is arguably the fairer test since it's actually close to "approximating a
-  continuous map").
+- **Primary test:** synthetic regression with a known smooth target function, where the
+  per-step update can be kept small by construction (matching the small-`Δt` premise the
+  theory actually needs). Implement plain-residual, 2-stage, and 4-stage integrator blocks
+  reusing the same per-stage function, matched parameter count per stage.
+- **Secondary/exploratory:** CIFAR-10 subset, same block variants — useful for seeing
+  whether the effect survives outside the constructed small-step regime, but a null result
+  here should not be treated as falsifying the theory itself (see caveat above), only as
+  evidence the effect doesn't help at standard trained-ResNet depth.
 - Sweep depth for each integrator order, find minimum depth to hit a fixed loss threshold,
   compute true FLOPs at that depth, compare ratios against theory.
 
@@ -68,4 +84,6 @@ residual blocks are better."
 
 ## Status
 
-Not yet run.
+Not yet run. Priority 4 — run after threads 6, 1, and 2. Expected outcome (stated up
+front, per the pre-registration rule in `docs/methodology.md`): likely falsified on the
+CIFAR-10 arm, possibly supported on the synthetic-smooth-target arm.

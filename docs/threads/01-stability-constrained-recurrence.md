@@ -1,4 +1,4 @@
-# Thread 1: Stability-constrained recurrence
+# Thread 1 (priority 2): Stability-constrained recurrence
 
 **Math source:** control theory (linear systems, spectral radius / eigenvalue placement),
 Lyapunov stability, Koopman operator theory (linearizing nonlinear dynamics via a lifted
@@ -18,21 +18,49 @@ from the constraint, rather than discovering it by trial and error per architect
 
 ## Architectural hypothesis
 
-If we parameterize any recurrent/residual state update so the linearization of its
-Jacobian has a spectral radius provably in a target band (e.g. via a structured
-parameterization — orthogonal/unitary, or diagonal-plus-low-rank with bounded diagonal),
-the network should be trainable at proportionally greater depth/sequence length than an
-unconstrained update of the same parameter count, and the relationship should be
-predictable from the spectral bound itself, not just qualitatively better.
+If we parameterize a *linear* recurrent state update so its transition matrix has a
+spectral radius provably in a target band (e.g. via a structured parameterization —
+orthogonal/unitary, or diagonal-plus-low-rank with bounded diagonal), the network should
+be trainable at proportionally greater depth/sequence length than an unconstrained update
+of the same parameter count, and the relationship should be predictable from the spectral
+bound itself — and, more importantly, that predictability should hold *across different
+structured parameterizations that enforce the same bound*, not just for one specific
+construction (this is the part that would actually be new; the linear-regime scaling law
+itself is close to a known identity — see prediction below).
 
-## Falsifiable prediction
+## Falsifiable prediction (pre-registered, revised after review)
 
-For a family of recurrent blocks with spectral radius constrained to `1 - eps`, the
-maximum depth (or sequence length) at which the model trains without gradient
-explosion/vanishing (measured via gradient norm ratio between first and last layer staying
-within a fixed band, e.g. [0.1x, 10x]) scales like `O(1/eps)`. An unconstrained baseline
-(same parameter count, free spectrum) should plateau well below this and show no such
-scaling relationship with any single tunable knob.
+Two predictions, scoped separately because they carry different risk:
+
+1. **Linear-regime prediction (low risk, near-identity).** For a strictly *linear*
+   recurrence `h_t = A h_{t-1} + B x_t` with spectral radius constrained to `1 - eps`, the
+   maximum depth (or sequence length) at which the model trains without gradient
+   explosion/vanishing (gradient norm ratio between first and last layer staying within a
+   fixed band, e.g. [0.1x, 10x]) scales like `O(1/eps)`. This follows almost directly from
+   contraction/mixing-time arguments and is expected to hold — it's included mainly as a
+   harness sanity check, not as the interesting claim.
+2. **Cross-parameterization prediction (the actual falsifiable core).** The `O(1/eps)`
+   relationship holds *regardless of which structured parameterization enforces the
+   spectral bound* — i.e., it is not an artifact specific to HiPPO's construction.
+   Concretely: orthogonal/unitary parameterizations and diagonal-plus-low-rank
+   parameterizations, both constrained to the same `eps`, should show max-trainable-depth
+   curves that agree with each other and with the `O(1/eps)` prediction within a factor of
+   2, at matched FLOPs. If the two parameterization families diverge from each other by
+   more than that factor, the claim that "trainable depth is predictable from the spectral
+   bound alone, independent of construction" is falsified, even though the linear-regime
+   math above would still be technically correct for each construction individually.
+
+**Nonlinear recurrence is explicitly out of scope for this thread's falsifiable claim.**
+For a nonlinear update, the Jacobian spectrum is state- and time-dependent, so "the
+spectral radius" is not a single well-defined number, and the clean mixing-time argument
+does not transfer without a much more careful (uniform-in-state) stability analysis. If a
+nonlinear variant is tried, it is exploratory and must not be reported under this thread's
+pre-registered prediction — it would need its own falsifiable statement (e.g., a stability
+margin computed along the actual training trajectory, not the linearization at init).
+
+An unconstrained baseline (same parameter count, free spectrum) is expected to plateau
+well below both constrained variants and show no such scaling relationship with any single
+tunable knob — this is the comparison arm, not the main claim.
 
 This is a *mechanism-level* prediction (gradient-flow behavior, trainable depth) — it does
 not claim anything about downstream capability, which keeps it testable at small scale.
@@ -69,4 +97,5 @@ falsification.
 
 ## Status
 
-Not yet run.
+Not yet run. Priority 2 — build second, after thread 6's harness exists (this thread is
+also thread 6's first novel-layer test case).

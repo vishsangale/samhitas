@@ -1,7 +1,7 @@
-# Mathematical Foundations for Neural Architecture Search — Research Plan (Draft v0)
+# Mathematical Foundations for Neural Architecture Search — Research Plan (Draft v1)
 
-Status: seed draft, written for review (including adversarial review by another model)
-before any thread gets implemented. Everything here is a hypothesis, not a result.
+Status: draft v1, revised after an adversarial review pass (see section 5). Everything
+here is still a hypothesis, not a result — nothing in this repo has been run yet.
 
 ## 1. Thesis
 
@@ -14,7 +14,7 @@ architecture-tweaking. For each candidate idea:
    scaling rule.
 3. Derive a **falsifiable, quantitative prediction** from the theory — not "this should
    work better" but "this specific quantity should behave this specific way, and if it
-   doesn't, the theory is wrong."
+   doesn't, the theory is wrong." Pre-registered before the experiment runs (section 5).
 4. Run the cheapest experiment that can break the prediction. Most of the research budget
    is spent here, at small scale.
 5. Only if a thread survives (1)-(4) does it earn a scaling check: a small sweep across a
@@ -45,16 +45,16 @@ every thread here is not "did a human design this" (everything is human-designed
   short-term hack, not architecture. Worth building anyway sometimes (efficiency wins are
   real), but label it honestly as such.
 - Is it cheap to fit onto current accelerators (dense matmuls, parallel scan, FFT — not
-  sequential per-token control flow, not gather/scatter-heavy ops)?
+  sequential per-token control flow, not gather/scatter-heavy ops)? And does it actually
+  win on measured wall-clock, not just an analytic FLOP count (section 5 tightened this).
 
 **b. "Falsification at small scale" needs an explicit protocol or it's just vibes.** Two
 specific failure modes to guard against, both addressed in `docs/methodology.md`:
-- *Confound from parameter count instead of compute*: always compare at matched FLOPs, not
-  just matched params (a cheap-op architecture can look worse per-parameter and better
-  per-FLOP, or vice versa — report both, decide on FLOPs).
+- *Confound from parameter count instead of compute*: always compare at matched FLOPs
+  *and* wall-clock, not just matched params.
 - *Confound from tuning effort*: a novel architecture with a hand-tuned LR beating an
   under-tuned baseline is not a finding. Every comparison sweeps LR (and any theory-implied
-  hyperparameter) for both sides.
+  hyperparameter) for both sides, with the *number* of tuning trials matched between arms.
 
 **c. Not everything is small-scale-detectable, and we should say so per thread.** Some
 effects are genuinely emergent and invisible below a scale threshold. We mitigate this by
@@ -76,52 +76,108 @@ until scale. Each thread doc states which kind of prediction it's making.
   English"). Priors must be statements about computation, symmetry, stability, or
   information flow, not about a specific dataset.
 - Not treating a single seed / single run as a result. Minimum 3 seeds for anything that
-  goes in a thread's "status: supported" column.
+  goes in a thread's "status: supported" column, and clearing a pre-registered effect-size
+  bar, not just non-overlapping error bars (section 5).
 
 ## 4. Methodology summary
 
-See `docs/methodology.md` for the full loop. Short version: hypothesis → prediction →
-minimal falsification experiment (matched-compute, multi-seed, small models/datasets) →
-if it survives, a 4-6 point scaling-law sweep to check the sign and rough trend of the
-effect holds as N (params) and D (data) grow → verdict: falsified / supported-so-far /
-inconclusive (needs a sharper prediction).
+See `docs/methodology.md` for the full loop. Short version: hypothesis → pre-registered
+prediction → minimal falsification experiment (matched FLOPs + wall-clock, matched tuning
+trial count, multi-seed with a stated effect-size bar) → if it survives, a 4-6 point
+scaling-law sweep to check the sign and rough trend of the effect holds as N (params) and
+D (data) grow → verdict: falsified / supported-so-far / inconclusive (needs a sharper
+prediction).
 
-## 5. Candidate research threads (portfolio)
+## 5. Review pass v1 (Opus 4.8 advisor)
 
-Each row links to a full doc in `docs/threads/`. This is a portfolio on purpose — we
-expect most threads to be falsified quickly and cheaply; that's the point.
+Draft v0 of this plan (six threads, no methodology gaps addressed) was reviewed
+adversarially by an Opus 4.8-based advisor agent before any code was written. Full memo is
+preserved in this repo's history; the concrete changes it produced:
 
-| # | Thread | Math source | Predicts (falsifiable) | Bitter-lesson risk |
+- **Methodology gaps fixed:** added pre-registration (numeric predictions committed before
+  the run, not adjusted post hoc), explicit FLOPs-*and*-wall-clock accounting (analytic
+  FLOP counts alone were flagged as an exploitable comparison axis), and tuning-budget
+  symmetry + a pre-registered effect-size criterion (3 non-overlapping seeds was flagged
+  as insufficient evidence of a real difference). All three now live in
+  `docs/methodology.md`.
+- **Thread 6 promoted to priority 1** (was priority 3) — it's a logical dependency for the
+  rest of the repo (the whole "falsify small, trust the trend at scale" premise rests on
+  hyperparameter/effect transfer holding), not just another candidate idea. Relabeled from
+  "RMT-guided" to "muP-style" since random matrix theory was doing no actual work in the
+  derivation — the original math-source label was inaccurate.
+- **Thread 1 kept, prediction rescoped** — the clean scaling law only holds in the linear-
+  recurrence regime; nonlinear recurrence was quietly folded into the original prediction
+  without justification and is now explicitly out of scope. The falsifiable core is now
+  "does the depth-vs-spectral-bound relationship hold across different structured
+  parameterizations," which is the part that's actually informative rather than close to a
+  mathematical identity.
+- **Thread 2 demoted to priority 3** and its prediction reworked — "derive `sigma*`
+  analytically" was undersold as a cheap step (it's a real analysis task for a genuinely
+  novel activation, and doesn't apply cleanly to normalized layers at all); scope
+  restricted to pointwise, unnormalized activations, and the pass/fail band replaced with
+  the theory's own derived depth-scale instead of an arbitrary 0.8x/1.2x offset.
+- **Thread 3 deferred, not cut** — its falsification case was flagged as near-guaranteed a
+  priori (low information) and its headline "predictable crossover length `n*`" was never
+  actually derived anywhere in the doc. Blocked until someone derives a concrete `n*`
+  formula.
+- **Thread 4 kept, expectations tempered** — the ODE/integrator argument needs small
+  per-step residual updates, which standard trained ResNets don't obviously have; prior
+  work on this specific idea shows marginal/inconsistent gains. Doc now leads with the
+  synthetic-smooth-target task (where the small-step premise is plausible by construction)
+  rather than CIFAR-10, and states the likely-falsified expectation up front.
+- **Thread 5 deferred, not cut** — the Lie-algebra/matrix-exponential construction doesn't
+  by itself guarantee equivariance (that requires an explicit commutant constraint,
+  `[L, G_i] = 0`, that the original doc skipped), and the generator-alignment metric has an
+  unresolved gauge-freedom problem. Blocked until both are resolved on paper.
+- **Two threads added:** Thread 7 (PAC-Bayes/flatness as a cross-architecture
+  generalization-gap design target) and Thread 8 (Fisher/K-FAC condition number as a
+  cross-architecture optimization-difficulty design target) — both flagged as genuine gaps
+  in the original portfolio, which had nothing targeting generalization or optimization
+  geometry directly. Category theory and tropical geometry were considered and rejected —
+  neither currently yields a sharp small-scale falsifiable prediction for this repo's
+  purposes.
+
+## 6. Candidate research threads (portfolio, in priority order)
+
+| Priority | Thread | Math source | Predicts (falsifiable) | Bitter-lesson risk |
 |---|--------|--------------|--------------------------|---------------------|
-| 1 | [Stability-constrained recurrence](docs/threads/01-stability-constrained-recurrence.md) | Control theory, Lyapunov stability, Koopman operators | Spectral-radius-constrained state matrices raise max trainable depth/sequence length by a predictable factor vs. unconstrained recurrence, at matched compute | Low — general stability constraint, parallel-scan friendly |
-| 2 | [Criticality-guided initialization](docs/threads/02-criticality-guided-init.md) | Mean-field theory / statistical mechanics of deep nets | For a given (activation, normalization, skip topology), theory predicts a critical init variance; off-critical init fails past a theory-predicted depth, on-critical init doesn't | Low — a derivation procedure, not a fixed prior |
-| 3 | [Spectral / operator mixing](docs/threads/03-spectral-operator-mixing.md) | Fourier analysis, operator learning (FNO) | There exists a sequence-length crossover n\* below which O(n log n) spectral mixing matches attention's accuracy on long-range recall, predicted from the convolution theorem | Medium — must not degrade into a fixed-basis prior that caps expressivity |
-| 4 | [Optimal-control integrators for depth](docs/threads/04-optimal-control-integrators.md) | Pontryagin maximum principle, ODE view of ResNets, numerical integrator theory | Residual blocks built as higher-order integrators (vs. Euler/plain residual) need fewer effective layers for matched approximation error, by a factor predictable from integrator order | Low — still dense matmul stacks |
-| 5 | [Learned/adaptive equivariance](docs/threads/05-learned-equivariance.md) | Lie group theory, representation theory | A layer that learns its symmetry generators (instead of a human picking the group) recovers the ground-truth symmetry group on synthetic data and matches a hand-built equivariant net's sample efficiency once converged | Medium-high — must earn its keep vs. "just add more data," the classic bitter-lesson trap |
-| 6 | [RMT-guided hyperparameter transfer](docs/threads/06-rmt-hparam-transfer.md) | Random matrix theory, muP / infinite-width limits | A derived per-layer LR/init scaling rule lets hyperparameters tuned at small width transfer zero-shot to larger width, within a theory-predicted tolerance | Low — this *is* the scale-transfer methodology, made explicit |
+| 1 | [muP-style hyperparameter transfer](docs/threads/06-mup-hparam-transfer.md) | Tensor Programs / muP (infinite-width limits) | LR optimal at width W stays within 2x of optimal at k*W under the derived scaling rule; naive parameterization drifts by 10x+ | Low — this *is* the scale-transfer methodology, made explicit |
+| 2 | [Stability-constrained recurrence](docs/threads/01-stability-constrained-recurrence.md) | Control theory, Lyapunov stability, Koopman operators | Depth-vs-spectral-bound relationship (linear regime) holds across different structured parameterizations, not just one construction | Low — general stability constraint, parallel-scan friendly |
+| 3 | [Criticality-guided initialization](docs/threads/02-criticality-guided-init.md) | Mean-field theory / statistical mechanics (pointwise, unnormalized layers only) | Empirical (sigma, depth) trainability boundary matches the theory's derived `xi(sigma)` depth-scale curve | Low — a derivation procedure, not a fixed prior |
+| 4 | [Optimal-control integrators for depth](docs/threads/04-optimal-control-integrators.md) | Pontryagin maximum principle, ODE view of ResNets, numerical integrator theory | On a synthetic smooth-target task (small-step regime), required depth drops with integrator order per truncation-error theory, FLOP-honest | Low — still dense matmul stacks; likely falsified outside the constructed small-step regime |
+| 5 | [Fisher/K-FAC-preconditioned optimization](docs/threads/08-natural-gradient-preconditioning.md) | Information geometry, natural gradient, K-FAC | Fisher condition number near init predicts steps-to-target-loss ranking across architectures; preconditioning benefit scales with how ill-conditioned the architecture is | Low — general optimization-geometry statement |
+| 6 | [PAC-Bayes / flatness as design target](docs/threads/07-pac-bayes-flatness.md) | PAC-Bayes bounds, loss-landscape flatness | A cheap flatness proxy ranks architecturally distinct models (at matched train loss) in the same order as their actual test gap | Low — landscape-geometry measurement, not a layer |
 
-**Backlog (not yet written up, lower priority):** information-bottleneck-constrained
-layers (information theory), optimal-transport / Sinkhorn mixing layers (OT theory),
-sparse-coding-derived layers (compressed sensing). Will get thread docs if 1-6 don't fill
-the available research capacity.
+**Deferred (blocked on unresolved issues, see thread docs for what's needed before building):**
 
-## 6. Shared experiment harness (see `experiments/README.md`)
+- [Learned/adaptive equivariance](docs/threads/05-learned-equivariance.md) — Lie group
+  theory. Blocked: the matrix-exponential construction doesn't by itself guarantee
+  equivariance; needs an explicit commutant constraint and a gauge-invariant alignment
+  metric before implementation starts. Highest bitter-lesson risk in the portfolio either
+  way (must earn its keep vs. "just add more data").
+- [Spectral / operator mixing](docs/threads/03-spectral-operator-mixing.md) — Fourier
+  analysis / operator learning. Blocked: no derived formula for the claimed crossover
+  length `n*`; as written the falsification case is close to guaranteed a priori and
+  therefore low-information.
+
+## 7. Shared experiment harness (see `experiments/README.md`)
 
 All threads should be testable against a common small set of diagnostic tasks so results
 are comparable: synthetic algorithmic tasks (associative recall, selective copy, modular
 arithmetic — cheap and known to separate architectures, per the S4/Mamba/RWKV line of
 work), a tiny char/token-level LM task (Shakespeare / TinyStories scale), and a small
 vision classification task (CIFAR-10 or a subset). No code committed yet — harness lands
-once the methodology doc and thread docs get a review pass.
+once this revised plan and thread docs get a review pass.
 
-## 7. Immediate next steps
+## 8. Immediate next steps
 
-1. Review this draft (including the adversarial pass against another model) — is the
-   thread selection sane, is anything mathematically sloppy, is anything secretly a
-   task-specific hack wearing a math costume?
-2. Pick 2 threads to actually build first. Suggest starting with #1 (stability-constrained
-   recurrence) and #2 (criticality-guided init) — both have the sharpest, cheapest-to-test
-   predictions and the most existing theory to lean on, so they're the fastest way to
-   validate the *methodology itself* before investing in the riskier threads (#5 especially).
-3. Build the shared harness in `experiments/`.
-4. Run thread #1 and #2 falsification experiments.
+1. Build the shared harness in `experiments/`, including the matched-FLOPs+wall-clock
+   accounting and multi-seed sweep infrastructure the revised methodology requires.
+2. Run **Thread 6** first (muP-style transfer, baseline layer only, to validate the
+   protocol against known results) — it's the methodology's own validity check.
+3. Implement **Thread 1**'s structured-recurrence layer, which doubles as Thread 6's first
+   novel-layer test case, and run Thread 1's falsification experiment.
+4. Proceed through the rest of the priority table in order — criticality-guided init
+   (priority 3), optimal-control integrators (priority 4), Fisher/K-FAC preconditioning
+   (priority 5), PAC-Bayes/flatness (priority 6) — revisiting the two deferred threads
+   only once their blocking issues are resolved on paper.

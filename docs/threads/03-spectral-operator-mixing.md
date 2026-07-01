@@ -1,7 +1,20 @@
-# Thread 3: Spectral / operator mixing
+# Thread 3 (DEFERRED after review): Spectral / operator mixing
 
 **Math source:** Fourier analysis (convolution theorem), operator learning (Fourier Neural
 Operators), signal processing.
+
+> **Deferred, not cut.** Review verdict: the associative-recall failure case is near
+> guaranteed a priori (a fixed frequency-domain filter has no token-identity-dependent
+> routing, so it provably cannot do content-based recall), which makes that half of the
+> "falsifiable prediction" low-information — it's very unlikely to actually falsify
+> anything. Worse, the crossover length `n*` in the portfolio table was never actually
+> derived anywhere in this doc; as written the experiment measures where two curves cross
+> rather than testing a predicted `n*`. Do not build this thread until someone derives a
+> concrete formula/estimate for `n*` (e.g., from the task's spectral decay rate or from a
+> rate-distortion argument about how much content-dependent information the position-only
+> kernel is missing) — otherwise this reduces to engineering, not theory-testing. See
+> `RESEARCH.md` section 7 for the natural-gradient thread (docs/threads/08) suggested as a
+> stronger use of this slot in the meantime.
 
 ## Motivation
 
@@ -71,4 +84,5 @@ use which mechanism rather than "ours is faster."
 
 ## Status
 
-Not yet run.
+Deferred. Blocked on deriving an actual `n*` formula (see banner at top of doc); not
+scheduled until threads 6, 1, and 4 are done.

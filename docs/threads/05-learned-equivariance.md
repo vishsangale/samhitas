@@ -1,7 +1,24 @@
-# Thread 5: Learned / adaptive equivariance
+# Thread 5 (DEFERRED after review): Learned / adaptive equivariance
 
 **Math source:** Lie group theory, representation theory (irreducible representations,
 group generators/Lie algebra), equivariant deep learning.
+
+> **Deferred, construction is currently underspecified.** Review verdict: parameterizing
+> learnable generators and applying `exp(sum theta_i G_i)` gives you a group *action* you
+> can apply to inputs, but it does **not by itself** make an arbitrary downstream layer
+> equivariant to that action. Equivariance is the commutation condition
+> `L ∘ rho(g) = rho'(g) ∘ L` for all `g` in the group; getting it from learned generators
+> requires the layer's weights to additionally satisfy the infinitesimal commutant
+> constraint `[L, G_i] = 0` for each learned generator `G_i`, and the original doc glossed
+> over this — it is not automatic. **Do not start implementation until the architectural
+> hypothesis below is rewritten to state how `[L, G_i] = 0` is enforced** (e.g. by
+> constructing `L` to lie in the commutant algebra of the learned generators at each step,
+> or via a penalty term with a stated tolerance). Separately, the generator-alignment
+> metric in the falsifiable prediction compares objects only defined up to a *gauge*
+> (basis change / rescaling of the Lie algebra), and "alignment" needs a concrete
+> gauge-invariant definition (e.g. comparing the subalgebras' actions on a fixed probe set,
+> not raw generator matrices) before it can be computed at all. Both fixes are analysis
+> work, not implementation work — resolve them in this doc first.
 
 ## Motivation
 
@@ -74,4 +91,6 @@ plain-with-scale), which most prior work doesn't run as a dedicated ablation.
 
 ## Status
 
-Not yet run.
+Deferred. Blocked on resolving the commutant-constraint and gauge-invariant-alignment
+issues in the banner at the top of this doc. Highest engineering risk in the portfolio;
+not scheduled among the first four threads.

@@ -16,7 +16,7 @@ holds along a trend line, not to brute-force a result into existence.
 Start here:
 
 - [`RESEARCH.md`](./RESEARCH.md) — the thesis, methodology, guardrails, and the current
-  portfolio of research threads. This is the draft under review.
+  portfolio of research threads (draft v1, revised after an adversarial review pass).
 - [`docs/methodology.md`](./docs/methodology.md) — the falsification loop and the
   matched-compute / scaling-law protocol used to grade every thread.
 - [`docs/threads/`](./docs/threads) — one doc per candidate architectural idea: motivating
@@ -26,5 +26,8 @@ Start here:
 
 ## Status
 
-Seed stage. Nothing has been run yet. The immediate next step is review, then picking 1-2
-threads to actually implement and try to falsify.
+Seed stage. Nothing has been run yet. Draft v0 went through an adversarial review pass
+(`RESEARCH.md` section 5); the plan is now revised (v1) with a tightened methodology,
+reordered thread priority, two threads deferred pending unresolved issues, and two new
+threads added. Next step: build the shared harness (`experiments/README.md`) and run the
+priority-1 thread.
