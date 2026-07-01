@@ -149,6 +149,59 @@ def find_critical_sigma_w2(sigma_b2: float, phi, phi_prime, lo: float = 0.05, hi
     return 0.5 * (lo + hi)
 
 
+def correlation_map(c: float, q_star: float, sigma_w2: float, sigma_b2: float, phi,
+                     n_quad: int = 60) -> float:
+    """C(c) = [sigma_w^2 * E_{z1,z2}[phi(u1) phi(u2)] + sigma_b^2] / q_star, the full
+    (non-linearized) correlation-map recursion for two inputs at the variance fixed point
+    q_star with correlation c, where u1 = sqrt(q_star) z1 and
+    u2 = sqrt(q_star) (c z1 + sqrt(1-c^2) z2), z1, z2 ~ iid N(0,1).
+
+    chi_1 (see chi_1() above) is this map's *derivative at c=1* -- the asymptotic rate
+    once c is already close to its fixed point (c*=1). Away from c=1, the map can move
+    much faster or slower than that local rate; iterating the full map from a task's
+    actual starting correlation (see transient_depth_to_fixed_point below) is how thread
+    13 (docs/threads/13-*.md) separates that transient from the asymptotic regime the
+    linearized xi describes, instead of assuming the linearized rate holds from depth 0.
+
+    2D Gauss-Hermite quadrature (product of two 1D node sets) rather than Monte Carlo, for
+    the same determinism/precision reasons as the rest of this module.
+    """
+    z, w = _gauss_hermite_nodes(n_quad)
+    q = max(q_star, 0.0)
+    u1 = np.sqrt(q) * z  # shape (n_quad,)
+    cross = np.sqrt(max(1.0 - c ** 2, 0.0))
+    # u2[i, j] uses z1=z[i], z2=z[j]
+    u2 = np.sqrt(q) * (c * z[:, None] + cross * z[None, :])
+    phi_u1 = phi(u1)[:, None]
+    phi_u2 = phi(u2)
+    weight_grid = w[:, None] * w[None, :]
+    cross_term = float(np.sum(weight_grid * phi_u1 * phi_u2))
+    return (sigma_w2 * cross_term + sigma_b2) / q if q > 0 else 1.0
+
+
+def transient_depth_to_fixed_point(sigma_w2: float, sigma_b2: float, phi, phi_prime,
+                                    c0: float = 0.0, tol: float = 0.02, max_depth: int = 2000,
+                                    n_quad: int = 60) -> int:
+    """Iterates the FULL correlation map c_{l+1} = C(c_l) (not the linearized chi_1 rate)
+    from a task's actual starting correlation c0, returning the smallest depth L at which
+    |1 - c_L| < tol.
+
+    This is the theory-internal quantity thread 13 uses to define a fit window's lower
+    bound in advance, rather than picking a depth cutoff because it happened to recover a
+    pattern after the fact: for near-orthogonal one-hot task inputs (c0~0), the
+    linearized xi only describes the rate once c_l has actually gotten close to 1, and
+    this function measures how many layers that takes for real, using the theory's own
+    (non-linearized) map -- not the empirical MLP.
+    """
+    q_star = fixed_point_q(sigma_w2, sigma_b2, phi, n_quad=100)
+    c = c0
+    for depth in range(1, max_depth + 1):
+        c = correlation_map(c, q_star, sigma_w2, sigma_b2, phi, n_quad)
+        if abs(1.0 - c) < tol:
+            return depth
+    return max_depth
+
+
 def tanh_phi(x):
     return np.tanh(x)
 
