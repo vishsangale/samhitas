@@ -119,3 +119,92 @@ itself.
 
 Not yet run. This doc exists to satisfy `docs/methodology.md`'s pre-registration rule
 before any of this thread's analysis code is written or run.
+
+**Post-hoc note, 2026-07-07 (`scripts/thread12_gradient_flow_depth_scale.py`): falsified
+exactly as pre-registered — both criteria fail, concentrated entirely in the chaotic
+phase.**
+
+Ran the pre-registered protocol exactly: 9 `sigma_w2` points x 16 depths x 30 seeds, single
+init-time forward+backward pass per cell, one global `log(grad_norm)` vs. `depth` fit per
+`sigma_w2`.
+
+```
+sigma_w2   xi_theory   L (empirical)   ratio
+1.30       4.82        7.94            1.650
+1.40       6.00        9.29            1.549
+1.60       10.15       13.74           1.354
+1.80       23.07       21.76           0.943
+1.90       51.92       29.45           0.567
+2.05       73.85       63.93           0.866
+2.20       23.19       850.46          36.681   <- anomaly
+2.40       12.71       45.18           3.555
+2.80       7.13        18.47           2.588
+```
+
+**Shape criterion: FAIL.** `log(L)` vs. `log(xi_theory)` correlation = 0.524 (need >= 0.8);
+peak `L` at `sigma_w2=2.2`, not adjacent to the theoretical critical point (need `{1.9,
+2.05}`). **Magnitude criterion: FAIL.** The `sigma_w2=2.2` ratio (36.7x) and `sigma_w2=2.4`
+ratio (3.56x, just outside the band) both violate the pre-registered `[1/3, 3]` requirement
+on every interior point. **Overall: FAIL, as pre-registered.**
+
+Notably — worth stating precisely, since it sharpens what this negative result does and
+doesn't rule out — **the ordered phase alone (`sigma_w2` <= 1.9) already matches theory
+well under this exact fit**: ratios `1.65 -> 1.55 -> 1.35 -> 0.94 -> 0.57`, monotonically
+decreasing toward 1 as `sigma_w2` approaches the critical point from below. The failure is
+concentrated entirely in the chaotic phase (`sigma_w2` > 1.9861), not a whole-curve
+mismatch.
+
+Sent the result to an independent Opus 4.8 review before finalizing, per this repo's
+process. The review re-ran a slice itself (15 seeds at `sigma_w2` in `{1.3, 1.9, 2.2,
+2.8}`, plus an exact 30-seed reproduction of the 2.2 column) and reproduced every number to
+the digit — confirmed not a harness bug, RNG issue, or numerical overflow (0/30 non-finite
+values even at the deepest chaotic cells). It also confirmed the correct theory curve
+(`chi_1` crosses 1.0 at `sigma_w2*=1.9861`, `xi(sigma_w2)` is V-shaped around it) is what's
+being compared against.
+
+**The review corrected my own working explanation for the `sigma_w2=2.2` anomaly.** While
+investigating before writing this up, I attributed the large-depth blowup to forward
+tanh-derivative saturation ("finite-width trajectories individually saturating tanh's
+derivative once compounding chaotic growth pushes pre-activations into the saturating
+tail"). The review measured this directly and **found it's false**: the forward
+pre-activation saturation fraction at the last hidden layer stays low (~0.01) and flat with
+depth at `sigma_w2=2.2` — expected, since the variance map's fixed point `q*` is bounded
+(~0.94), so forward activations don't run away. The forward pass isn't the problem. The
+actual mechanism, verified directly by the review: **heavy-tailed, seed-to-seed
+multiplicative variance on the *backward* pass at large depth in the chaotic phase** — the
+log-grad-norm standard deviation across seeds rises from ~0.3 at depth 32 to ~3.0 at depth
+256, and the log-mean itself goes non-monotonic (rises to depth ~90, drops at depth 256,
+rises again at depth 362). A single global log-linear slope fit over a trend that
+rises-then-falls-then-rises collapses toward zero, inflating `L` to the hundreds.
+
+The review also confirmed the transient-vs-asymptotic confound I'd flagged as a risk in
+this thread's "explicitly out of scope" reasoning is real and large: theory's `xi` is
+strictly an asymptotic near-fixed-point rate, but this task's near-orthogonal one-hot
+inputs start far from the fixed point, so early depth is a transient, not the asymptotic
+regime — and the pre-registered single global fit (depth 2 to 362) conflates that
+transient, a genuine near-asymptotic window, and the large-depth backward-variance-
+corrupted regime into one number, dominated by whichever regime has the most leverage (for
+chaotic-phase points, that's the corrupted deep tail). As a check on this (exploratory
+only — **not used to change the verdict above**), the review refit `sigma_w2=2.2` with the
+depth range restricted:
+
+```
+window            shape corr   peak    2.2 ratio
+2-362 (pre-reg)   0.538        2.2     31-37x
+depth <= 90       0.865        2.05    3.15
+depth <= 45       0.906        2.05    2.71
+```
+
+Restricting to a near-asymptotic-only window would pass the shape criterion and bring the
+2.2 outlier close to (though still slightly outside) the magnitude band — suggesting the
+underlying theory-resemblance may be real and the failure here is specifically in the
+*estimator* (one global slope averaging three different regimes), not necessarily in the
+theory's applicability.
+
+**Verdict: falsified as specified, per the pre-registered plan — no do-over under this
+thread's label.** The window-restricted numbers above are a diagnosed confound, not a
+result; per this repo's own discipline they don't get to retroactively pass this thread.
+If this is pursued further, it needs its own fresh pre-registration with a differently
+defined estimator (e.g. a near-asymptotic-only fit window, or a piecewise/robust fit)
+specified *before* running — chosen for principled reasons stated in advance, not because
+it happens to recover the pattern already seen here.

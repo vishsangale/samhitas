@@ -120,3 +120,23 @@ signal-propagation mechanism looks real, but the quantitative "small constant fa
 needs its own freshly pre-registered follow-up (bigger seed count, per-`sigma_w2`-matched
 depth grid) before it counts as supported. Not yet started. See
 `docs/threads/02-criticality-guided-init.md`'s dated addendum for the full account.
+
+Thread 12 (that gradient-flow-depth-scale follow-up, freshly pre-registered per the above)
+was then built and run — also **falsified as specified**. Protocol: 9 `sigma_w2` x 16
+depths x 30 seeds, one global `log(grad_norm)` vs. `depth` fit per `sigma_w2`, compared
+against theory's `xi(sigma_w2)` via a shape criterion (log-log correlation >= 0.8 + peak
+location) and a magnitude criterion (ratio within 3x). Both failed (correlation 0.524; a
+36.7x outlier at `sigma_w2=2.2`) — though the ordered phase alone (`sigma_w2` <= 1.9)
+already matched theory well (ratios 1.65 -> 0.57, monotonic); the failure concentrates
+entirely in the chaotic phase. An Opus review reproduced every number exactly (no harness
+bug) and **corrected my own working hypothesis** for the chaotic-phase anomaly: not
+forward tanh-derivative saturation (verified flat/low), but heavy-tailed backward-pass seed
+variance at large depth in the chaotic phase, which corrupts a single global depth-fit. It
+also confirmed a real transient-vs-asymptotic confound (this task's near-orthogonal inputs
+start far from theory's fixed point) — restricting the fit window (exploratory only, does
+not change the verdict) substantially recovers the pattern (correlation 0.865, correct
+peak). **Verdict: falsified as specified, no do-over under this label.** A properly
+different estimator (near-asymptotic-only or piecewise fit), pre-specified before running,
+would need its own fresh pre-registration to test the window-restricted signal for real —
+not yet started. See `docs/threads/12-gradient-flow-depth-scale.md`'s dated addendum for
+the full account.

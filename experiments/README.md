@@ -33,6 +33,7 @@ experiments/
     thread09_gate_recall_sanity.py, thread10_curriculum_sanity.py,
     thread11_dual_gate_sanity.py  # gate-family sub-line, see findings below -- built
     thread02_criticality_sanity.py  # depth x sigma_w2 sweep, see finding below -- built
+    thread12_gradient_flow_depth_scale.py  # grad-flow length vs xi, see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
@@ -209,6 +210,27 @@ result -- the qualitative signal-propagation mechanism looks real, but the quant
 (bigger seed count, per-`sigma_w2`-matched depth grid) before it counts as supported. Full
 account in `docs/threads/02-criticality-guided-init.md`'s dated addendum.
 
+## Thread 12 finding (2026-07-07, CPU, `scripts/thread12_gradient_flow_depth_scale.py`)
+
+Follow-up to thread 2's falsified prediction, testing the theory-appropriate diagnostic
+(init-time gradient-flow decay/growth length, not loss-reaching) under its own fresh
+pre-registration (9 `sigma_w2` x 16 depths x 30 seeds, single fwd+bwd pass per cell, one
+global `log(grad_norm)` vs. `depth` fit per `sigma_w2`). **Falsified as pre-registered**:
+shape correlation 0.524 (need >=0.8), magnitude band violated by a 36.7x outlier at
+`sigma_w2=2.2`. Notably, the ordered phase alone (`sigma_w2` <= 1.9) already matches theory
+well under this exact fit (ratios 1.65 -> 0.57, monotonic) -- the failure concentrates
+entirely in the chaotic phase. An Opus 4.8 review reproduced every number exactly (ruling
+out a harness bug) and corrected my own working hypothesis for the anomaly: not forward
+tanh-derivative saturation (verified flat/low), but heavy-tailed backward-pass seed
+variance at large chaotic-phase depth, which corrupts a single global depth-fit. The review
+also confirmed a real transient-vs-asymptotic confound (this task's near-orthogonal inputs
+start far from theory's fixed point) -- restricting the fit window (exploratory only, not
+used to flip the verdict) substantially recovers the pattern (corr 0.865, correct peak
+location). **Verdict: falsified as specified, no do-over under this label** -- a properly
+different estimator, pre-registered fresh before running, would be needed to test the
+window-restricted signal for real. Full account in
+`docs/threads/12-gradient-flow-depth-scale.md`'s dated addendum.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
@@ -240,8 +262,11 @@ account in `docs/threads/02-criticality-guided-init.md`'s dated addendum.
 
 ## Next step
 
-Not yet decided: either pre-register and build the gradient-flow-depth-scale follow-up to
-thread 2 (bigger seed count, per-`sigma_w2`-matched depth grid, per its dated addendum
-above), or move to the next untouched portfolio item (optimal-control integrators,
+Not yet decided: thread 2's gradient-flow-depth-scale follow-up (thread 12) also falsified
+as specified, though its own review diagnosed a specific estimator confound (a single
+global depth-fit conflates transient, near-asymptotic, and finite-width-noise-corrupted
+regimes) that a *fresh*, differently-designed pre-registration could test. Options: build
+that fresh thread (pre-specify a near-asymptotic-only or piecewise fit window *before*
+running), or move to the next untouched portfolio item (optimal-control integrators,
 priority 4). Threads 1 and 6 are closed/parked for now; the gate-family sub-line (9/10/11)
 is closed as a negative result; see `RESEARCH.md` section 8 for the full status.
