@@ -13,21 +13,25 @@ a GPU per `docs/methodology.md`'s compute budget).
 experiments/
   tasks/
     modular_arith.py   # (a, b) -> (a+b) mod p, one-hot, p-way classification -- built
+    recall.py           # associative recall: n key-value pairs + query -- built
   models/
     mlp.py              # MuPMLP: SP vs muP parametrization, per-layer-type LR groups -- built
+    linear_recurrence.py  # h_t=Ah_{t-1}+Bx_t, free/orthogonal/diag_lowrank A -- built
   harness/
     flops.py            # analytic FLOP counting (6*fan_in*fan_out/sample/layer) -- built
     train.py             # train_one(): single (param, width, lr, seed) run -- built
     report.py           # save_run(), summarize_sweep() (LR-drift-across-width) -- built
+    gradient_flow.py    # first/last-timestep gradient-norm ratio, 1 fwd+bwd pass -- built
   scripts/
-    thread06_mup_sanity.py  # dev smoke test, see caveat below -- built
+    thread06_mup_sanity.py, thread06_mup_widerange.py  # dev smoke tests -- built
+    thread01_stability_sanity.py  # dev smoke test, see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
-    tasks/recall.py, convdist_task.py (deferred thread 3), symmetry_gen.py (deferred thread 5)
+    tasks/convdist_task.py (deferred thread 3), symmetry_gen.py (deferred thread 5)
     harness/scaling_sweep.py   # 4-6 point width/depth/data sweep + trend fit
     harness/curvature.py       # Fisher/K-FAC condition number + flatness proxy (threads 7, 8)
-    models/ blocks for threads 1, 2, 4
+    models/ blocks for threads 2, 4
 ```
 
 ## Smoke-test finding v2 (2026-07-02, CPU, `scripts/thread06_mup_sanity.py`)
@@ -62,6 +66,22 @@ drift summary silently dropped noise-gated widths without saying so) — both fi
 Real run needs: an LR grid finer than 2x per step (not ~3.3x, which can't resolve a
 2x-tolerance claim), and a width range reaching the pre-registered 16x and ideally beyond.
 
+## Smoke-test finding (2026-07-03, CPU, `scripts/thread01_stability_sanity.py`)
+
+First cut at thread 1. One real bug caught and fixed while building
+`models/linear_recurrence.py`: the diag_lowrank parameterization's spectral-norm capping
+only ever scaled a matrix *down*, and a near-zero init left it far below its intended
+target radius; fixed via a Bauer-Fike-theorem-based bound instead of norm-capping, which
+gives a rigorous spectral-*radius* guarantee rather than an approximate spectral-*norm*
+one. See the dated addendum in `docs/threads/01-stability-constrained-recurrence.md` for
+the full result — short version: orthogonal matches the linear-regime prediction almost
+exactly (0.98^257 predicted vs. measured within ~10%), diag_lowrank tracks the same trend
+but isn't a clean quantitative match yet, and the unconstrained "free" baseline reached
+further than any tested constrained config at these eps values by getting lucky at init,
+while separately confirmed to explode catastrophically just past that range — a
+distinction the current healthy/unhealthy binary metric doesn't capture and needs fixing
+(track raw gradient magnitude, not just the ratio) before this says anything conclusive.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
@@ -78,8 +98,8 @@ Real run needs: an LR grid finer than 2x per step (not ~3.3x, which can't resolv
 
 ## Diagnostic tasks (shared across threads)
 
-- **Associative recall / selective copy** — thread 1 (structured recurrence), deferred
-  thread 3 if it's ever unblocked. Not yet built.
+- **Associative recall / selective copy** — built (`tasks/recall.py`); thread 1
+  (structured recurrence), deferred thread 3 if it's ever unblocked.
 - **Modular arithmetic / parity** — built (`tasks/modular_arith.py`); used so far as
   thread 6's smoke-test task, also the intended fast depth-probe task for thread 2.
 - **Tiny char/token-level LM** (Shakespeare / TinyStories scale) — thread 6's real run,
@@ -93,7 +113,7 @@ Real run needs: an LR grid finer than 2x per step (not ~3.3x, which can't resolv
 
 ## Next step
 
-Implement thread 1's structured-recurrence layer (`models/`), which is both its own
-falsification target and thread 6's first novel-layer test case, and `tasks/recall.py`.
-Before running thread 6 for real (as opposed to the smoke test above), address the task/
-metric caveat noted above in the thread doc.
+Fix `gradient_flow.py` to track raw gradient magnitude alongside the ratio (needed to
+distinguish "exploded" from "vanished," per thread 1's smoke-test finding above), then
+extend thread 1's eps/seq_len grids for a real cross-parameterization read. Before running
+thread 6 for real (as opposed to its smoke tests above), address its task/metric caveat.

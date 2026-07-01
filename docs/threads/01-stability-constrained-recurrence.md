@@ -97,5 +97,54 @@ falsification.
 
 ## Status
 
-Not yet run. Priority 2 — build second, after thread 6's harness exists (this thread is
-also thread 6's first novel-layer test case).
+Not yet run for real. Priority 2.
+
+**Post-hoc note, 2026-07-03 (`thread01_stability_sanity.py`, first smoke test):** built
+`experiments/models/linear_recurrence.py` (free/orthogonal/diag_lowrank parameterizations)
+and `experiments/tasks/recall.py` (associative recall), plus a gradient_norm_ratio
+diagnostic that needs only a single forward+backward pass per config (much cheaper than
+thread 6's training sweeps). One real bug caught and fixed while building: the
+diag_lowrank parameterization's spectral-norm capping only ever scaled a matrix *down*,
+never up, so a near-zero init left it far below its intended target radius; fixed, and
+in fixing it found that capping spectral *norm* doesn't rigorously bound spectral *radius*
+for a non-normal matrix like diag+low-rank anyway (they can differ a lot) -- redid it via
+the Bauer-Fike theorem (diagonal is normal; bounding the low-rank perturbation's norm by a
+small eps-scaled budget delta guarantees every eigenvalue of diag+perturbation stays
+within delta of some diagonal entry, so spectral radius <= (1-eps-delta)+delta = 1-eps,
+exactly, not just in spirit).
+
+First smoke-test read (5 seq lengths 17-257, eps in {0.5, 0.1, 0.02}, 3 seeds, 60 training
+steps -- small, meant to validate the code path and get a first signal, not a verdict):
+
+- **Orthogonal parameterization matches the linear-regime prediction almost exactly.** At
+  eps=0.02 (spectral radius 0.98), seq_len=257: predicted gradient ratio 0.98^257 = 0.0056,
+  measured 0.0057-0.0062 across seeds. That's strong evidence the mechanism and the
+  harness are implemented correctly, independent of anything about diag_lowrank.
+- **diag_lowrank tracks the same order of magnitude and the same qualitative trend as
+  orthogonal, but isn't a clean quantitative match yet.** Its effective decay rate runs a
+  bit faster than orthogonal's at the same nominal eps, which is the expected, intentional
+  consequence of reserving part of the spectral budget (delta = 0.1*eps) for the low-rank
+  term rather than a bug -- but the current eps grid (3 points) and seq_len grid (5 points,
+  spaced by ~2x) are too coarse to say with confidence whether it clears or misses the
+  thread's "within a factor of 2" cross-parameterization bar.
+- **The unconstrained "free" baseline reached further (healthy to seq_len=129) than any
+  tested constrained config**, including orthogonal at the smallest tested eps (healthy to
+  65 only) -- on its face this looks like it cuts against the thread's premise. It
+  shouldn't be read that way yet: free's random init happened to land near spectral radius
+  1 by luck (small-Gaussian matrices scaled 1/sqrt(n) cluster near radius 1 per the
+  circular law), which can reach further than a *deliberately contracting* eps=0.02 system
+  before decaying -- but earlier ad hoc testing (not part of this sweep) showed that same
+  free config exploding catastrophically (gradient ratio ~2x10^10, not just "unhealthy") at
+  seq_len=257. The current healthy/unhealthy binary metric doesn't distinguish "exploded
+  wildly" from "decayed gracefully," which is exactly the distinction this thread's premise
+  is actually about (predictable, bounded behavior vs. uncontrolled tail risk) -- the metric
+  needs to track raw gradient-norm magnitude, not just the ratio, to make that comparison
+  fairly. Also worth testing eps values small enough that a constrained variant can reach
+  into free's range (129+) to see whether it does so *without* the explosion risk, which is
+  the actual claim worth checking, not just "does it reach as far."
+
+Not a verdict either way. Concrete next steps before this counts as anything: track raw
+gradient-norm magnitude alongside the ratio to separate explosion from graceful decay,
+extend the eps grid smaller (so constrained variants are tested at ranges comparable to
+where free happens to reach), and use a finer seq_len grid for an honest factor-of-2 read
+on the cross-parameterization question.
