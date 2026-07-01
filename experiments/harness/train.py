@@ -9,10 +9,16 @@ whenever the task is easy enough to saturate near zero across most of an LR grid
 modular arithmetic did in the first smoke test -- see docs/threads/06-mup-hparam-transfer.md's
 post-hoc note). steps-to-target stays informative because it's monotone in how fast a
 config learns rather than flattening out once a config "wins".
+
+Tracks *multiple* loss thresholds per run, not one: a review of the first steps-to-target
+run flagged that hinging everything on a single target_train_loss + max_steps combination
+is itself a confounder (which configs count as "converged" is sensitive to that one
+arbitrary cutoff). Recording several thresholds in the same pass costs nothing extra and
+lets the summary check whether a pattern holds across cutoffs instead of resting on one.
 """
 
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 
 import torch
 import torch.nn.functional as F
@@ -35,13 +41,13 @@ class RunConfig:
     n_test: int = 1024
     batch_size: int = 128
     max_steps: int = 200
-    target_train_loss: float = 0.5
+    target_train_losses: list = field(default_factory=lambda: [1.5, 1.0])
 
 
 @dataclass
 class RunResult:
     config: dict
-    steps_to_target: int | None  # None if target_train_loss not reached within max_steps
+    steps_to_target: dict  # {threshold: step_first_crossed, or None if never within max_steps}
     final_train_loss: float
     final_test_loss: float
     final_test_acc: float
@@ -71,7 +77,8 @@ def train_one(cfg: RunConfig, log_every: int = 20) -> RunResult:
     # actually a leak since it's a different RNG method, but not decorrelated either).
     g = torch.Generator().manual_seed(cfg.seed * 1000 + 1)
     loss_curve = []
-    steps_to_target = None
+    steps_to_target = {t: None for t in cfg.target_train_losses}
+    pending = set(cfg.target_train_losses)
     start = time.perf_counter()
     step = 0
     for step in range(cfg.max_steps):
@@ -87,8 +94,11 @@ def train_one(cfg: RunConfig, log_every: int = 20) -> RunResult:
         loss_val = loss.item()
         if step % log_every == 0 or step == cfg.max_steps - 1:
             loss_curve.append((step, loss_val))
-        if steps_to_target is None and loss_val < cfg.target_train_loss:
-            steps_to_target = step
+        for t in list(pending):
+            if loss_val < t:
+                steps_to_target[t] = step
+                pending.discard(t)
+        if not pending:  # every threshold (including the strictest) has been crossed
             break
     wall_clock = time.perf_counter() - start
     steps_run = step + 1

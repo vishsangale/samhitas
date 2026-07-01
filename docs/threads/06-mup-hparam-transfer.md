@@ -116,23 +116,48 @@ across all three widths (0.01, log10 drift = 0.0), while muP's optimal raw `base
 shifted a full decade (0.01 -> 0.1, log10 drift = 1.0). Verdict per the pre-registered bar:
 **fails** (drift ratio 0.0x, needs >=3x).
 
-Two things temper how much this should be trusted as a real result, both structural, not
-bugs: (1) the LR grid's spacing (~3.3x between points) is coarser than the 2x tolerance
-the prediction itself is stated in, so the sweep can't actually resolve a 2x-scale claim
-either way; (2) muP's known advantage is largely asymptotic in width ratio and is usually
-demonstrated at ratios far larger than 8x (the original muTransfer paper transfers across
-~100-1000x) — an 8x range may simply be too small for muP's compensation to show up over
-Adam's own incidental scale-robustness at this size, independent of which parametrization
-is "right." Converting to *effective* LR (base_lr times muP's internal width multiplier)
-shows muP's effective LR was in fact close to flat (~0.01 -> ~0.0125, well under 2x) —
-so muP's underlying claim about effective learning dynamics looks fine here; what fails is
-the practical claim that the *same raw base_lr number* transfers without adjustment, which
-is the actually-relevant claim for "no re-tuning needed" and is legitimately what the
-thread's prediction is about.
+**Correction, 2026-07-02, after a second Opus 4.8 review of this addendum itself:** the
+paragraph originally here softened that result in a way the reviewer correctly called out
+as motivated reasoning, on two counts, and it's worth recording both since getting this
+wrong is itself informative about how easy it is to explain away an inconvenient result.
 
-Per the pre-registration rule, this still does not count as the thread's verdict (wrong
-scale, wrong grid resolution, single toy task). It does sharpen what the real run needs
-beyond the note above: an LR grid finer than 2x per step (not ~3.3x), and a width range
-that reaches at least the pre-registered 16x and ideally further, since an 8x ratio may be
-structurally too small to separate the two parametrizations regardless of which is
-correct.
+First, the grid-coarseness argument (spacing ~3.3x vs. a 2x tolerance) doesn't actually
+apply: muP's optimum moved a full decade, roughly two grid steps, which the grid resolves
+just fine. That objection argues against precision the result doesn't depend on.
+
+Second, and more importantly, the original addendum claimed converting to *effective* LR
+(`base_lr * base_width/width`) showed muP staying flat ("~0.01 -> ~0.0125, well under
+2x") and used that to argue the underlying theory was fine even though the raw-`base_lr`
+claim failed. This doesn't hold up two ways. (a) It's circular: the `base_width/width`
+factor *is* muP's mechanism, so dividing it back out and then observing "flatness" is
+recovering the input, not evidence about anything. The thread's actual pre-registered
+prediction is stated in terms of "the learning rate that is optimal ... under the derived
+scaling rule" — i.e. the raw `base_lr` a user sets and reuses, specifically because that's
+what "transfer without re-tuning" has to mean in practice. (b) It was also arithmetically
+wrong: it quoted only the width=64 and width=512 endpoints and dropped the width=256 point
+(0.025), which the sanity gate had flagged as noise-tied, not as invalid — including it,
+the effective-LR sequence is 0.010 -> 0.025 -> 0.0125, a 2.5x spread, which fails the very
+&lt;2x bar the paragraph claimed it cleared.
+
+The honest reading: **the smoke test ran cleanly against the prediction.** SP's raw
+LR-optimum was flat where muP's moved a full decade — at this scale, muP made the exact
+quantity the thread cares about worse, not better, than doing nothing. This is still not
+the thread's real verdict (wrong scale, wrong task, and the width range is too narrow for
+muP's usually-asymptotic advantage to plausibly appear at all — that caveat is legitimate
+and is the one to keep), but it should not be read as "inconclusive, ignore it." Two
+related bugs this exposed in `experiments/harness/report.py` are now fixed: a
+both-arms-flat sweep no longer silently auto-passes the effect-size bar (it previously
+divided by a zero drift and reported `ratio=inf`, which technically clears any threshold),
+and the drift summary now reports which widths were actually used versus gated out instead
+of silently dropping a noise-tied point the way this addendum's first draft implicitly
+did.
+
+What the real run needs, revised: width range genuinely matters and should reach well past
+the pre-registered 16x (30-60x+, since 8x already looks insufficient) to give muP a fair
+shot at its asymptotic regime — but extend it to find out whether muP starts winning, not
+as a reason to discount the current adverse reading. The step-budget/threshold setup
+(`target_train_loss` + `max_steps`) is also a real confounder the first draft of this note
+didn't flag: which configs count as "converged" is sensitive to one arbitrary cutoff and
+step ceiling, so the real run should report steps-to-target across several thresholds (or
+fit the loss curve) rather than hinge everything on one target value. LR grid resolution
+was a secondary concern, not the binding one.

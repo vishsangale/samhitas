@@ -65,12 +65,15 @@ def _best_lr_for_width(group_stats: dict, param: str, width: int, lrs: list) -> 
     return result
 
 
-def summarize_sweep(results: list[RunResult]) -> dict:
+def summarize_sweep(results: list[RunResult], threshold: float) -> dict:
+    """threshold selects which entry of each run's steps_to_target dict to summarize --
+    callers should run this once per tracked threshold and compare, rather than trusting
+    a single cutoff (see train.py's module docstring for why)."""
     by_group = defaultdict(list)
     lrs_by_param_width = defaultdict(set)
     for r in results:
         param, width, lr = r.config["parametrization"], r.config["width"], r.config["base_lr"]
-        by_group[(param, width, lr)].append(r.steps_to_target)
+        by_group[(param, width, lr)].append(r.steps_to_target[threshold])
         lrs_by_param_width[(param, width)].add(lr)
 
     group_stats = {k: _mean_steps(v) for k, v in by_group.items()}
@@ -82,24 +85,38 @@ def summarize_sweep(results: list[RunResult]) -> dict:
     summary = {}
     for param, per_width in per_param_width.items():
         widths = sorted(per_width)
-        valid = [(w, per_width[w]["lr"]) for w in widths if per_width[w]["note"] == "ok"]
+        valid_widths = [w for w in widths if per_width[w]["note"] == "ok"]
         drift = None
-        if len(valid) >= 2:
-            log_lrs = [math.log10(lr) for _, lr in valid]
+        if len(valid_widths) >= 2:
+            log_lrs = [math.log10(per_width[w]["lr"]) for w in valid_widths]
             drift = max(log_lrs) - min(log_lrs)
-        summary[param] = {"per_width": per_width, "log10_drift_decades": drift}
+        # Surfaced explicitly per review: a drift computed from fewer than all swept
+        # widths (because some got gated out as edge/tied-in-noise) should say so rather
+        # than silently reporting a number as if every width contributed.
+        summary[param] = {
+            "per_width": per_width,
+            "log10_drift_decades": drift,
+            "widths_used_in_drift": valid_widths,
+            "widths_gated_out": [w for w in widths if w not in valid_widths],
+        }
 
     verdict = None
     sp_drift = summary.get("sp", {}).get("log10_drift_decades")
     mup_drift = summary.get("mup", {}).get("log10_drift_decades")
     if sp_drift is not None and mup_drift is not None:
-        ratio = math.inf if mup_drift == 0 else sp_drift / mup_drift
-        verdict = {
-            "sp_drift_decades": sp_drift,
-            "mup_drift_decades": mup_drift,
-            "drift_ratio": ratio,
-            "passes_preregistered_bar (>=3x)": ratio >= EFFECT_SIZE_BAR,
-        }
+        if sp_drift == 0 and mup_drift == 0:
+            # Both arms flat means no discrimination happened at all -- not a muP win.
+            # (Previously this fell through to ratio=inf, which auto-passed the bar; a
+            # review caught that a genuinely-flat muP run would falsely "pass" this way.)
+            verdict = {"inconclusive": "both arms show zero drift -- grid/task isn't discriminating"}
+        else:
+            ratio = math.inf if mup_drift == 0 else sp_drift / mup_drift
+            verdict = {
+                "sp_drift_decades": sp_drift,
+                "mup_drift_decades": mup_drift,
+                "drift_ratio": ratio,
+                "passes_preregistered_bar (>=3x)": ratio >= EFFECT_SIZE_BAR,
+            }
     else:
         verdict = {"inconclusive": "not enough widths cleared the sanity gate for both arms"}
     summary["verdict"] = verdict

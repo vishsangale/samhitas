@@ -45,15 +45,19 @@ With those fixes, the 126-run sweep (widths 64/256/512 = k in {1, 4, 8}, 3 seeds
 now produces a real, non-degenerate signal for the first time — and it runs *against* the
 prediction as measured: SP's optimal raw `base_lr` was exactly flat across all three
 widths (log10 drift 0.0), muP's shifted a full decade (log10 drift 1.0). Verdict per the
-pre-registered bar: **fails** (ratio 0.0x, needs >=3x). See the dated addendum in
-`docs/threads/06-mup-hparam-transfer.md` for the full writeup and the reasons this
-shouldn't be trusted as a real result yet (LR grid coarser than the 2x tolerance being
-tested; muP's advantage is usually demonstrated at width ratios far larger than 8x, so
-this range may be structurally too small to separate the two parametrizations regardless
-of which is right). Converting to *effective* LR (base_lr x muP's width multiplier) shows
-muP's effective LR was in fact close to flat — so the underlying claim about learning
-dynamics looks fine here; what's failing is the practical "same raw number transfers"
-claim, at this scale, with this grid.
+pre-registered bar: **fails** (ratio 0.0x, needs >=3x).
+
+A second Opus 4.8 review pass caught that the first write-up of this result (both here and
+in the thread doc) softened it in a way that didn't hold up: the "convert to effective LR,
+it's actually fine" argument was circular (it divides out the exact factor muP's mechanism
+adds, then calls the result flat) and also arithmetically wrong once the middle width's
+data point was included instead of skipped. See the corrected, dated addendum in
+`docs/threads/06-mup-hparam-transfer.md` for the full accounting. Honest reading: the
+smoke test ran cleanly against the prediction at this scale — not yet the thread's real
+verdict (task/scale/width-range all differ from the pre-registered spec), but not
+"inconclusive, ignore it" either. `summarize_sweep` also had two latent bugs the review
+caught (a both-arms-flat sweep could auto-pass the effect-size bar via `ratio=inf`; the
+drift summary silently dropped noise-gated widths without saying so) — both fixed.
 
 Real run needs: an LR grid finer than 2x per step (not ~3.3x, which can't resolve a
 2x-tolerance claim), and a width range reaching the pre-registered 16x and ideally beyond.

@@ -1,18 +1,22 @@
-"""Dev smoke test for thread 6 (docs/threads/06-mup-hparam-transfer.md), NOT the
-pre-registered experiment. Fast/small -- for the wider, longer exploratory sweep see
-thread06_mup_widerange.py.
+"""Wider/finer CPU exploratory sweep for thread 6, still NOT the pre-registered GPU run --
+just a bigger step up from thread06_mup_sanity.py's quick smoke test.
 
-v3: train.py/report.py now track multiple loss thresholds per run instead of one (a review
-flagged hinging everything on a single target_train_loss + max_steps as a confounder), so
-this script summarizes and cross-checks both thresholds instead of just one.
+Extends smoke-test v2/v3 in the two directions a second Opus 4.8 review flagged as the
+real gaps: width range (was k in {1,4,8}, 8x total -- known to be too narrow for muP's
+usually-asymptotic advantage to plausibly show; this reaches k in {1,4,16,32}) and LR grid
+resolution (was ~3.3x spacing; this is ~2.3x, closer to the 2x tolerance the pre-registered
+prediction is actually stated in). Also reports both tracked loss thresholds so the result
+isn't hostage to one arbitrary cutoff, per the same review.
 
-Widths/depth are still scaled down from what docs/threads/06-mup-hparam-transfer.md's real
-run should use (k in {4, 8, 16} off a real base width) -- this sandbox is CPU-only, and
-width=1024+ with 2-3 hidden layers gets slow fast. k = 1, 4, 8 here instead of 1, 4, 8, 16;
-see thread06_mup_widerange.py for a run that reaches further.
+Sized to fit a single CPU run in roughly 10-15 minutes (see timing notes in commit history)
+-- width=4096 was tried and rejected: a single non-convergent run there costs ~90s+ on this
+sandbox's 4 cores, which alone blows the time budget across a full LR grid. 2048 (k=32) is
+the practical ceiling here; the real run still needs a GPU to go further, per
+docs/methodology.md's compute budget.
 """
 
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -20,16 +24,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from experiments.harness.report import save_run, summarize_sweep
 from experiments.harness.train import RunConfig, train_one
 
-RUN_DIR = Path(__file__).resolve().parents[1] / "runs" / "thread06_sanity"
+RUN_DIR = Path(__file__).resolve().parents[1] / "runs" / "thread06_widerange"
 
-# p=97 with a tight target/step budget never converged for *any* config, at any width or
-# LR -- 97-way modular arithmetic from one-hot inputs is close to the "grokking" setup
-# (Power et al. 2022), which needs thousands of steps, not hundreds. Dropped to p=41.
 P = 41
-N_TRAIN, N_TEST = 1200, 400  # 1600 of 41*41=1681 unique pairs
+N_TRAIN, N_TEST = 1200, 400
 BASE_WIDTH = 64
-WIDTHS = [64, 256, 512]  # k = 1, 4, 8 relative to base_width
-LRS = [3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1, 3e-1]
+WIDTHS = [64, 256, 1024, 2048]  # k = 1, 4, 16, 32 relative to base_width
+LRS = [3e-3, 7e-3, 1.5e-2, 3.5e-2, 8e-2, 1.8e-1, 4e-1, 9e-1]  # ~2.3x spacing
 SEEDS = [0, 1, 2]
 MAX_STEPS = 400
 TARGET_TRAIN_LOSSES = [1.5, 1.0]
@@ -39,6 +40,7 @@ def main():
     results = []
     total = len(WIDTHS) * len(LRS) * len(SEEDS) * 2
     done = 0
+    t_start = time.perf_counter()
     for parametrization in ("sp", "mup"):
         for width in WIDTHS:
             for lr in LRS:
@@ -59,13 +61,16 @@ def main():
                     save_run(result, RUN_DIR)
                     results.append(result)
                     done += 1
-                    stt = result.steps_to_target[TARGET_TRAIN_LOSSES[-1]]  # strictest
+                    stt = result.steps_to_target[TARGET_TRAIN_LOSSES[-1]]
                     stt_str = str(stt) if stt is not None else "DNC"
-                    print(f"[{done}/{total}] {parametrization} w={width} lr={lr:.1e} "
+                    elapsed = time.perf_counter() - t_start
+                    print(f"[{done}/{total}] {parametrization} w={width} lr={lr:.2e} "
                           f"seed={seed} steps_to_target={stt_str} "
-                          f"wall_clock={result.wall_clock_seconds:.2f}s")
+                          f"wall_clock={result.wall_clock_seconds:.2f}s "
+                          f"elapsed={elapsed:.0f}s", flush=True)
 
-    print("\n--- LR-transfer summary (smoke test, not a pre-registered verdict) ---")
+    print(f"\nTotal elapsed: {time.perf_counter() - t_start:.0f}s")
+    print("\n--- LR-transfer summary (wider CPU sweep, not a pre-registered verdict) ---")
     for threshold in TARGET_TRAIN_LOSSES:
         summary = summarize_sweep(results, threshold)
         print(f"\n=== threshold={threshold} ===")
