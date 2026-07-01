@@ -30,23 +30,33 @@ experiments/
     models/ blocks for threads 1, 2, 4
 ```
 
-## Smoke-test finding (2026-07-01, CPU, `scripts/thread06_mup_sanity.py`)
+## Smoke-test finding v2 (2026-07-02, CPU, `scripts/thread06_mup_sanity.py`)
 
-The harness runs end-to-end: dataset -> model -> per-layer-type param groups -> training
--> FLOPs/wall-clock -> multi-seed LR-sweep aggregation, all working. The result itself is
-**not informative and should not be read as support or falsification of thread 6**: at toy
-scale (widths 32/128/512, ~4K train examples, 150 steps), the task saturates (near-zero
-loss) across a wide LR range for both parametrizations, and Adam's own per-parameter
-gradient normalization provides enough incidental scale-robustness at this size that the
-"best LR" argmin is noisy/tied rather than tracking a real trainability boundary — SP
-showed zero drift and muP showed *more* drift in this run, the opposite of the prediction,
-which is a sign the metric isn't discriminating, not a real finding. This is expected and
-fine for a smoke test (its only job was to prove the code path works), but it also tells
-us the real thread-6 run (`docs/threads/06-mup-hparam-transfer.md`) needs: real width
-multiples (4x/8x/16x an actually-not-tiny base width, not 32), likely a harder task than
-this one, and probably tracking training stability/steps-to-target rather than final-loss
-argmin on a task easy enough to saturate. Worth folding into that thread's doc before the
-real run.
+v1's null result led to an Opus 4.8 code review, which found a real bug (train/test
+leakage in `modular_arith.make_dataset`, since fixed) and flagged the final-loss metric as
+too weak to discriminate on a saturating task. Both fixed: the split is now disjoint by
+construction, and the harness now measures steps-to-reach-a-target-training-loss instead
+of final loss, with an effect-size check against the pre-registered >=3x bar added to
+`summarize_sweep`. Also had to drop the task from p=97 to p=41 — p=97 with this MLP never
+got off the uniform-baseline loss plateau within a CPU-feasible step budget (that's the
+"grokking" regime, which needs thousands of steps, not hundreds).
+
+With those fixes, the 126-run sweep (widths 64/256/512 = k in {1, 4, 8}, 3 seeds, ~82s)
+now produces a real, non-degenerate signal for the first time — and it runs *against* the
+prediction as measured: SP's optimal raw `base_lr` was exactly flat across all three
+widths (log10 drift 0.0), muP's shifted a full decade (log10 drift 1.0). Verdict per the
+pre-registered bar: **fails** (ratio 0.0x, needs >=3x). See the dated addendum in
+`docs/threads/06-mup-hparam-transfer.md` for the full writeup and the reasons this
+shouldn't be trusted as a real result yet (LR grid coarser than the 2x tolerance being
+tested; muP's advantage is usually demonstrated at width ratios far larger than 8x, so
+this range may be structurally too small to separate the two parametrizations regardless
+of which is right). Converting to *effective* LR (base_lr x muP's width multiplier) shows
+muP's effective LR was in fact close to flat — so the underlying claim about learning
+dynamics looks fine here; what's failing is the practical "same raw number transfers"
+claim, at this scale, with this grid.
+
+Real run needs: an LR grid finer than 2x per step (not ~3.3x, which can't resolve a
+2x-tolerance claim), and a width range reaching the pre-registered 16x and ideally beyond.
 
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 

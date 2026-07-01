@@ -10,19 +10,31 @@ import torch
 
 
 def make_dataset(p: int, seed: int, n_train: int, n_test: int):
-    """Returns (x_train, y_train, x_test, y_test) as one-hot float tensors / long labels."""
+    """Returns (x_train, y_train, x_test, y_test) as one-hot float tensors / long labels.
+
+    Splits by enumerating the p*p unique (a, b) pairs and slicing a random permutation of
+    them disjointly, so train and test never share a pair. (A previous version drew
+    n_train+n_test pairs *with replacement* from p*p possibilities and then split, which
+    for small p meant most "test" pairs also appeared in train -- caught in review, see
+    docs/threads/06-mup-hparam-transfer.md's post-hoc note.)
+    """
+    assert n_train + n_test <= p * p, (
+        f"requested {n_train + n_test} examples but p={p} only has {p * p} unique pairs"
+    )
     g = torch.Generator().manual_seed(seed)
+    a_all, b_all = torch.meshgrid(torch.arange(p), torch.arange(p), indexing="ij")
+    a_all, b_all = a_all.reshape(-1), b_all.reshape(-1)
+    perm = torch.randperm(p * p, generator=g)
+    a_all, b_all = a_all[perm], b_all[perm]
+
     n_total = n_train + n_test
-    all_pairs = torch.randint(0, p, (n_total, 2), generator=g)
-    a, b = all_pairs[:, 0], all_pairs[:, 1]
+    a, b = a_all[:n_total], b_all[:n_total]
     labels = (a + b) % p
 
     x = torch.zeros(n_total, 2 * p)
     x[torch.arange(n_total), a] = 1.0
     x[torch.arange(n_total), p + b] = 1.0
 
-    perm = torch.randperm(n_total, generator=g)
-    x, labels = x[perm], labels[perm]
     return x[:n_train], labels[:n_train], x[n_train:], labels[n_train:]
 
 

@@ -104,3 +104,35 @@ not-tiny base width, not 32), consider a harder task than modular arithmetic tha
 saturate across the whole LR grid, and consider tracking training stability / steps-to-
 target-loss rather than final-loss argmin, which is a weak signal on any task easy enough
 to reach near-zero loss under many configurations.
+
+**Post-hoc note, 2026-07-02 (harness smoke test v2, still not the pre-registered run):**
+fixed three issues an Opus 4.8 code review found in v1 (train/test leakage in the dataset
+split, a final-loss metric too weak to discriminate, and no effect-size check in
+`summarize_sweep`). With those fixed and switched to a steps-to-target-loss metric on a
+disjoint split, the harness now produces a real, non-degenerate signal for the first time
+(126-run sweep, widths 64/256/512 = k in {1, 4, 8}, 3 seeds, ~82s on CPU) — and the signal
+runs *against* the prediction as measured: SP's optimal raw `base_lr` was exactly flat
+across all three widths (0.01, log10 drift = 0.0), while muP's optimal raw `base_lr`
+shifted a full decade (0.01 -> 0.1, log10 drift = 1.0). Verdict per the pre-registered bar:
+**fails** (drift ratio 0.0x, needs >=3x).
+
+Two things temper how much this should be trusted as a real result, both structural, not
+bugs: (1) the LR grid's spacing (~3.3x between points) is coarser than the 2x tolerance
+the prediction itself is stated in, so the sweep can't actually resolve a 2x-scale claim
+either way; (2) muP's known advantage is largely asymptotic in width ratio and is usually
+demonstrated at ratios far larger than 8x (the original muTransfer paper transfers across
+~100-1000x) — an 8x range may simply be too small for muP's compensation to show up over
+Adam's own incidental scale-robustness at this size, independent of which parametrization
+is "right." Converting to *effective* LR (base_lr times muP's internal width multiplier)
+shows muP's effective LR was in fact close to flat (~0.01 -> ~0.0125, well under 2x) —
+so muP's underlying claim about effective learning dynamics looks fine here; what fails is
+the practical claim that the *same raw base_lr number* transfers without adjustment, which
+is the actually-relevant claim for "no re-tuning needed" and is legitimately what the
+thread's prediction is about.
+
+Per the pre-registration rule, this still does not count as the thread's verdict (wrong
+scale, wrong grid resolution, single toy task). It does sharpen what the real run needs
+beyond the note above: an LR grid finer than 2x per step (not ~3.3x), and a width range
+that reaches at least the pre-registered 16x and ideally further, since an 8x ratio may be
+structurally too small to separate the two parametrizations regardless of which is
+correct.
