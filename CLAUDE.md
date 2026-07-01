@@ -191,3 +191,24 @@ review ends with a ranked next-step list (RESEARCH.md section 8 has the short ve
 (3) generous-budget gate check, (4) new recall-mechanism thread (composition / short-conv /
 DeltaNet-style state, carrying thread 9's deferred prediction B). Each needs its own
 pre-registered thread doc before code. None started.
+
+**Reconciliation note, 2026-07-07 (end of session):** this full-portfolio review
+(`docs/reviews/2026-07-07-portfolio-review.md`) was produced by a separate agent working on
+this repo concurrently with an independent adversarial-review pass run in this session's own
+conversation (not separately committed — the two covered overlapping ground and were
+reconciled by hand). Where they agreed, confidence is higher: thread 1's "clean support" is
+somewhat inflated (two of its three measurements are near-tautological at init; only the
+cross-parameterization result is genuinely empirical, and even that needed a hand-tuned
+diag_lowrank init to match), and thread 11's closing "not architecture" clause is shaky.
+Where they disagreed, **the portfolio review's verdict wins** — it did a deeper literature
+dig: this session's own adversarial pass had suggested promoting the untouched
+ranking-correlation threads (7 PAC-Bayes/flatness, 8 Fisher/K-FAC) on a pattern-matching
+heuristic ("ranking claims are the kind that survive here"), but the portfolio review found
+both specific claims are already well-studied in the literature and likely falsified as
+stated (NASWOT/TE-NAS/NAS-Bench-Suite-Zero/Sokol & Park for thread 8; Dziugaite et
+al./Dinh et al./Andriushchenko et al. for thread 7) — same "near-guaranteed a priori,
+low-information" logic that already deferred thread 3. **Decision at end of session: start
+the next work with idea I1 (muP coordinate check) from the review's ranked list — cheapest
+(minutes of CPU), most decisive, and unblocks thread 6, which the rest of the portfolio's
+"falsify small, trust the trend" premise depends on. Not yet started — no code, no thread
+doc for it exists yet.**
