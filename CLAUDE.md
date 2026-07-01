@@ -74,3 +74,14 @@ n_pairs=8). Not retrofitting the pre-registered depth after seeing this — a cu
 dual-gate follow-up would need its own fresh pre-registration. Prediction B deferred (the
 trained gates never opened meaningfully, so there's nothing informative to test yet). See
 `docs/threads/09-gated-spectral-recurrence.md`'s dated addendum for the full account.
+
+Thread 10 (curriculum follow-up, pre-registered separately per that rule) also
+**falsified as specified**: a 3-stage curriculum (n_pairs 2->4->8, same 2000-step total
+compute as thread 9's direct training) reached only 0.039 mean accuracy vs. the 0.30 target
+— barely above thread 9's own direct-training control (0.032). Two independent recovery
+attempts (direct training, curriculum) have now failed at the pre-registered depth, while
+mechanism-level evidence still says the underlying idea (gate genuinely injects
+content-dependence) isn't structurally dead. Next step, if pursued, is architectural
+(independent read/write gates) — needs its own fresh thread doc, not a further
+training-schedule variant. See `docs/threads/10-curriculum-gated-recurrence.md`'s dated
+addendum.

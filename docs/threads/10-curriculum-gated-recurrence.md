@@ -117,3 +117,44 @@ thread 9's specific gated-spectral-recurrence construction.
 
 Not yet implemented. This doc exists to satisfy `docs/methodology.md`'s pre-registration
 rule before any curriculum training code is written.
+
+**Post-hoc note, 2026-07-06 (`scripts/thread10_curriculum_sanity.py`): falsified as
+pre-registered — curriculum barely moves the needle.**
+
+Ran the exact pre-registered protocol: 3-stage curriculum (n_pairs=2 x 700 steps, n_pairs=4
+x 700 steps, n_pairs=8 x 600 steps; 2000 total, matching thread 9's direct-training budget
+exactly), same LR grid and 5 seeds, evaluated on held-out n_pairs=8 batches.
+
+- **Best-of-grid mean accuracy: 0.039** (lr=3e-4), vs. the 0.30 target. **Falsified.**
+- Comparison against thread 9's already-collected direct-training control (0.032, not
+  re-run): the curriculum arm's 0.039 is only marginally higher, and the gap is within
+  per-seed noise (curriculum per-seed spread at its best LR: 0.033-0.043). Curriculum
+  training, at this specific stage allocation, did not meaningfully recover depth-8
+  performance.
+
+This is a more informative negative result than a plain "didn't work," though: the review
+that motivated this thread found the *same* gated architecture reaches 0.32 accuracy when
+trained and evaluated at n_pairs=2 alone. Here, the curriculum spends its first two stages
+at exactly n_pairs=2 and n_pairs=4 (1400 of the 2000 total steps) before the final 600 steps
+at n_pairs=8 — and still ends up indistinguishable from direct n_pairs=8-only training. That
+pattern is consistent with the credit-assignment story from thread 9's addendum: whatever
+the shared read/write gate learns at shallow depth does not survive further training at
+n_pairs=8 well enough to help, rather than shallow training simply being wasted. It does not
+by itself confirm that reading, though — two unpre-registered confounds are visible without
+more experiments: (a) 700 steps at n_pairs=2 may not be enough on its own to reach the
+review's 0.32 (that number's own training budget wasn't matched here), and (b) 600 final
+steps at n_pairs=8 may not be enough to consolidate even a well-learned shallow-stage gate.
+Not running further stage-allocation variants under this same "prediction" label — that
+would be exactly the retrofitting `docs/methodology.md`'s pre-registration rule exists to
+prevent. The honest bookkeeping: **this curriculum schedule, as pre-registered, is
+falsified.** A different allocation, or the dual-gate (independent read/write) idea thread
+9's review also raised, would need its own fresh pre-registration, not a rerun under this
+one's numbers.
+
+At this point, two independent attempts to recover thread 9's prediction A at the
+pre-registered depth (direct training, then this curriculum) have both failed, while the
+mechanism-level evidence (the gate provably injects content-dependence; shallow depths
+train fine) still says the underlying idea isn't structurally dead. The next cheapest,
+different-in-kind thing to try, if this line is pursued further, is architectural (the
+dual-gate idea) rather than another training-schedule variant — but that is a decision for
+a fresh thread doc, not an extension of this one.

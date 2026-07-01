@@ -214,6 +214,21 @@ own pre-registered protocol. Prediction B deferred (the trained n_pairs=8 gates 
 opened meaningfully, so there's no genuinely-gated model yet to test predictability
 against). Full account in `docs/threads/09-gated-spectral-recurrence.md`'s dated addendum.
 
+**Thread 10 (curriculum follow-up to thread 9): also falsified as pre-registered.** Tested
+whether a 3-stage curriculum (n_pairs 2->4->8, same 2000-step total compute as thread 9's
+direct training) recovers depth-8 recall accuracy. Best-of-grid mean accuracy 0.039 vs. the
+0.30 target — only marginally above thread 9's direct-training control (0.032), within
+per-seed noise. Notable: 1400 of the 2000 steps were spent at depths where the review found
+this architecture reaches 0.32 alone, yet the final depth-8 stage still collapsed to near
+the direct-training baseline — consistent with a credit-assignment failure specific to the
+shared read/write gate at that depth, though two unpre-registered confounds (step budget per
+stage) aren't ruled out. Two independent recovery attempts have now failed while the
+mechanism-level evidence (gate provably injects content-dependence; shallow depths train
+fine) still says the idea isn't structurally dead. Next different-in-kind option, if
+pursued: an architectural change (independent read/write gates instead of one shared
+scalar) — needs its own fresh pre-registration, not a further training-schedule variant.
+Full account in `docs/threads/10-curriculum-gated-recurrence.md`'s dated addendum.
+
 Other threads (2, 4, 5/8 per the priority table) are untouched — still just written up in
 `docs/threads/`, no code.
 4. Proceed through the rest of the priority table in order — criticality-guided init

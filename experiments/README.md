@@ -133,6 +133,26 @@ test it against. Full account, including the review's numbers, in
 (curriculum training, independent read/write gates) would need their own pre-registered
 protocol, not a retrofit of this one.
 
+## Thread 10 finding (2026-07-06, CPU, `scripts/thread10_curriculum_sanity.py`)
+
+Follow-up to thread 9's falsified prediction A: tested whether a 3-stage curriculum
+(n_pairs 2 -> 4 -> 8, same total 2000-step budget as thread 9's direct training) recovers
+depth-8 recall accuracy. **Falsified as pre-registered**: best-of-grid mean accuracy 0.039
+vs. the 0.30 target, only marginally above thread 9's direct-training control (0.032,
+reused rather than re-run) and within per-seed noise. Notable because the curriculum spends
+1400 of its 2000 steps at depths (n_pairs=2, 4) where the review behind thread 9 found this
+same architecture reaches 0.32 accuracy alone — yet the final n_pairs=8 stage still
+collapses to near the direct-training baseline, consistent with (but not proof of) a
+credit-assignment failure specific to the shared read/write gate at that depth, not simply
+"needed more warm-up." Two unpre-registered confounds (the 700-step n_pairs=2 stage may be
+under the budget the review's 0.32 number used; 600 final steps may be too few to
+consolidate) are noted but not chased under this thread's own label. Two independent
+recovery attempts (direct training, then curriculum) have now both failed while the
+mechanism-level evidence still says the idea isn't structurally dead; the next
+different-in-kind thing to try is architectural (independent read/write gates), which would
+need its own fresh pre-registration. Full account in
+`docs/threads/10-curriculum-gated-recurrence.md`'s dated addendum.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
