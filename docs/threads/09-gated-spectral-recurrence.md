@@ -186,3 +186,94 @@ re-checking hard before trusting) rather than assuming it as expected.
 
 Not yet implemented. This doc exists to satisfy `docs/methodology.md`'s pre-registration
 rule before `experiments/models/`/`experiments/scripts/` code for this thread is written.
+
+**Post-hoc note, 2026-07-06 (`experiments/models/gated_linear_recurrence.py`,
+`scripts/thread09_gate_recall_sanity.py`): prediction A run as literally pre-registered —
+falsified at this depth; mechanism likely fixable, not structurally impossible.**
+
+Before running the full sweep, a pre-implementation smoke test caught a real design bug:
+default `nn.Linear` init made the gate average `g_t ~= 0.5` regardless of `eps`, letting
+gate-init noise dominate decay instead of the spectral bound. Fixed with a `-4` bias init
+(gate starts near-closed); verified the gated model then tracks ungated orthogonal's
+effective decay rate at init to within ~2% (see the model file's docstring). This fix was
+made *before* any accuracy numbers were reported, so it isn't a post-hoc adjustment to the
+prediction itself.
+
+Ran the exact pre-registered protocol (vocab=512, hidden=64, eps=0.1, n_pairs=8/seq_len=17,
+2000 fresh-random-batch Adam steps, LR grid `{3e-4, 1e-3, 3e-3, 1e-2, 3e-2}`, 5 seeds,
+matched grid/seeds/steps for the ungated control):
+
+- **`gated_orthogonal`: best-of-grid mean accuracy 0.032** (lr=3e-4), well below the
+  pre-registered 0.30 target. **`orthogonal` control: best-of-grid mean accuracy 0.020**
+  (lr=1e-3) — also below target, as expected for a construction thread 1 already proved
+  structurally incapable.
+- **Prediction A is falsified under this exact protocol.** Neither arm clears 0.30; the
+  gap between the gated arm (0.032) and the ungated control (0.020) is real but small
+  relative to the target, not the qualitative "recall becomes solvable" result predicted.
+
+One data quality note worth logging honestly rather than glossing over: the ungated
+control's 0.020 is ~10x the naive `1/512 = 0.00195` chance level the prediction's target
+was calibrated against — too large a gap to be sampling noise at n=512 (a binomial(512,
+1/512) count of 10-18 correct, as observed, is 9-17 standard deviations above the p=1/512
+mean). This isn't evidence the "provably incapable" proof from thread 1 is wrong — it's an
+artifact of the target always being one of the 8 tokens presented as values earlier in the
+sequence: a linear readout can (correctly, non-mysteriously) learn to weight the ~16 token
+identities that appeared anywhere in the sequence higher than the ~496 that didn't (a
+"restrict to seen tokens" bag-of-embeddings heuristic, no content-matching required),
+which raises expected accuracy above naive per-token chance without implying any lookup
+capability. Doesn't change the verdict (0.30 was set comfortably above this empirical
+floor, not just the naive one), but the 0.30 target's margin over the *real* baseline is
+smaller than the pre-registration assumed, worth remembering if a future revision tightens
+the bar.
+
+**Before concluding this falsifies the underlying idea (not just this protocol), sent the
+code, results, and my own in-principle mathematical argument to an independent Opus 4.8
+review**, which re-ran everything itself rather than trusting the write-up (this repo's
+standard practice). Findings:
+
+- **No harness bug.** `recall.make_batch`, the training loop, and eval are all correct
+  (checked directly, including for train/eval leakage — none found).
+- **Capacity is not the limiter.** The gated model reaches 100% accuracy memorizing a
+  single fixed batch within 500 steps.
+- **The in-principle mathematical argument holds up.** At the query timestep,
+  `logits = (1-g_T(query)) * readout(A h_{T-1}) + g_T(query) * readout(B x_query)` — since
+  `g_T` depends only on the query token, this is a query-dependent *diagonal reweighting*
+  of the readout applied to the aggregated stored content, not the query-independent
+  additive structure thread 1 proved is fatal for the ungated case. The review verified
+  this directly: with the gate forced open (bias=+4, `W_g` scaled x10) rather than
+  near-closed, a direct test (two storage prefixes with different content, same query)
+  showed the query-swap response depends on stored content with ratio ~0.47, vs. ~0.02 at
+  the near-closed init — i.e., the gate does inject exactly the content-dependence thread
+  1's proof rules out for the linear case. **Thread 9's premise is not falsified by this
+  result; this specific undertrained instance is.**
+- **The actual bottleneck is depth, not the mechanism.** The review found accuracy
+  collapses monotonically with `n_pairs` regardless of LR/hidden size/gate-bias-init:
+  n_pairs=2 (vocab=512) reached 0.32 (clears 0.30); n_pairs=4 reached 0.11; n_pairs=8
+  (this thread's pre-registered depth) reached ~0.01-0.03, matching this run. In every
+  trained n_pairs=8 run the learned gate barely opened (mean `g` ~= 0.01-0.16) — forcing
+  it open via bias init didn't help either, so this isn't a simple init trap; it looks like
+  a hard credit-assignment problem for a *scalar, read/write-shared* gate at this depth
+  (protecting old memories and writing new ones compete for the same scalar per channel,
+  8 pairs deep).
+
+**Not re-running this exact protocol at easier depths and calling it "prediction A,
+revised"** — that would be exactly the retrofit `docs/methodology.md`'s pre-registration
+rule exists to prevent. The honest bookkeeping: **prediction A, as pre-registered
+(n_pairs=8), is falsified.** The open question this leaves — whether a curriculum
+(train at n_pairs=2, then 4, then 8) or an independent-read/independent-write gate (two
+gates instead of one shared scalar) recovers depth-8 performance — is a *different*,
+narrower hypothesis than what was pre-registered here, and would need its own thread doc
+(or an explicitly-scoped revision of this one, run under a fresh pre-registered protocol,
+not folded into this result) before any such follow-up counts as a verdict rather than
+exploration.
+
+**Prediction B not run.** Its design (`docs/threads/09-gated-spectral-recurrence.md`'s
+"minimal experiment" section) measures gradient flow on the models trained under
+prediction A's protocol — but those models' gates never opened meaningfully (mean g stayed
+near its 0.018 init value), so they're not meaningfully different from the ungated control
+this thread already has a clean answer for from thread 1. Running the diagnostic on them
+would trivially "pass" (gate barely moved, so decay tracks nominal almost exactly) without
+testing what prediction B actually asks — whether predictability survives a gate that has
+*learned to do something*. Deferred until a follow-up (curriculum or dual-gate) protocol
+produces a model whose gate has actually opened, at which point prediction B becomes a
+meaningful test again.

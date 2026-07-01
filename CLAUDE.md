@@ -63,11 +63,14 @@ doc after the fact to match whatever the code happened to do.
 
 ## Current status (see RESEARCH.md section 8 for the full version)
 
-As of 2026-07-05: thread 6 (muP transfer) is parked, inconclusive at toy scale. Thread 1
+As of 2026-07-06: thread 6 (muP transfer) is parked, inconclusive at toy scale. Thread 1
 (stability-constrained recurrence) is closed for now with clean small-scale support on all
-three of its original measurements. Thread 9 (gated spectral recurrence, extends thread 1)
-is pre-registered — `docs/threads/09-gated-spectral-recurrence.md` has two falsifiable
-predictions (recall becomes solvable via a minimal input-dependent retention gate; the
-gated failure boundary stays within 2x of ungated orthogonal at matched eps) — but no
-model/script code exists yet. Next action: implement `GatedLinearRecurrentBlock`, smoke-test
-prediction A's training loop timing before committing to the full sweep size.
+three of its original measurements. Thread 9 (gated spectral recurrence, extends thread 1):
+prediction A run exactly as pre-registered (n_pairs=8) and **falsified** — but an
+independent Opus review found the gate mechanism genuinely does inject content-dependence
+(unlike thread 1's provably-impossible ungated case) and traced the failure to
+depth-specific undertraining (same construction reaches 0.32 acc at n_pairs=2, collapses by
+n_pairs=8). Not retrofitting the pre-registered depth after seeing this — a curriculum or
+dual-gate follow-up would need its own fresh pre-registration. Prediction B deferred (the
+trained gates never opened meaningfully, so there's nothing informative to test yet). See
+`docs/threads/09-gated-spectral-recurrence.md`'s dated addendum for the full account.

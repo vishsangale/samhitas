@@ -111,6 +111,28 @@ exactly at both eps values (460.4 predicted vs. bracketed between 447/475 measur
 1151.1 predicted vs. 1151/1185 measured) -- the cleanest quantitative confirmation of the
 linear-regime prediction so far. Full writeup in the thread doc's 2026-07-05 addendum.
 
+## Thread 9 finding (2026-07-06, CPU, `scripts/thread09_gate_recall_sanity.py`)
+
+Ran thread 9's prediction A exactly as pre-registered: a minimal input-dependent retention
+gate (`experiments/models/gated_linear_recurrence.py`) on top of thread 1's orthogonal core,
+tested at vocab=512, hidden=64, eps=0.1, n_pairs=8, 2000 fresh-batch Adam steps, 5-point LR
+grid, 5 seeds, matched budget against the ungated control. **Falsified at this depth**:
+gated best-of-grid mean accuracy 0.032, ungated control 0.020, both far below the 0.30
+target. An Opus 4.8 review (re-ran everything itself) found no bug, confirmed the gate does
+mathematically inject query-dependent content-sensitivity that thread 1 proved impossible
+for the ungated case, and found the real bottleneck is depth-specific undertraining, not a
+structural limit — the same construction reaches 0.32 at n_pairs=2 in the review's own
+re-run, and accuracy collapses monotonically as n_pairs grows (a hard credit-assignment
+problem for a single scalar gate shared between "protect old memory" and "write new
+content" at 8 pairs deep). Not re-running at easier depths under this same pre-registered
+claim — that would retrofit the prediction after seeing the data. Prediction B (does
+predictability survive) deferred: the trained n_pairs=8 gates never opened meaningfully
+(mean g stayed near its 0.018 init value), so there's no meaningfully-gated model yet to
+test it against. Full account, including the review's numbers, in
+`docs/threads/09-gated-spectral-recurrence.md`'s dated addendum. Open follow-up questions
+(curriculum training, independent read/write gates) would need their own pre-registered
+protocol, not a retrofit of this one.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting

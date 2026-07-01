@@ -196,19 +196,23 @@ nonlinear comparison, which conflicts with this thread's own linear-recurrence
 pre-registration), so task accuracy is dropped as a metric here. Full history in
 `docs/threads/01-stability-constrained-recurrence.md`'s dated addenda.
 
-**Thread 9 (gated spectral recurrence, extends thread 1): pre-registered, not yet
-implemented.** `docs/threads/09-gated-spectral-recurrence.md` now exists with two required
-falsifiable predictions: (A) a minimal input-dependent retention gate on top of thread 1's
-`orthogonal` core (`h_t = (1-g_t)*(A h_{t-1}) + g_t*(B x_t)`, `g_t = sigmoid(W_g x_t)`)
-reaches >=0.30 mean held-out accuracy on the same associative-recall task thread 1 proved
-unlearnable for a linear model, at eps=0.1, 2000 steps, >=5 seeds, matched LR-sweep budget
-against an ungated control that should stay at chance; (B) the gated model's
-healthy/unhealthy sequence-length boundary (via `gradient_norm_ratio`) stays within 2x of
-the ungated orthogonal boundary at the same nominal eps, across thread 1's full eps list.
-Both must hold for "supported so far" — deliberately in tension, since a gate strong enough
-to enable recall could plausibly be strong enough to break predictability. No model/script
-code written yet; next step is implementing `GatedLinearRecurrentBlock` and smoke-testing
-prediction A's training loop before the full 5-seed x 5-LR sweep.
+**Thread 9 (gated spectral recurrence, extends thread 1): prediction A run, falsified at
+the pre-registered depth — likely a fixable undertraining issue, not a structural one.**
+Built `GatedLinearRecurrentBlock` (minimal input-dependent retention gate on thread 1's
+`orthogonal` core) and ran prediction A exactly as pre-registered (vocab=512, hidden=64,
+eps=0.1, n_pairs=8, 2000 steps, 5-point LR grid, 5 seeds, matched budget vs. an ungated
+control). Result: gated best-of-grid mean accuracy 0.032, control 0.020, both far below the
+0.30 target — **falsified as literally specified.** An independent Opus 4.8 review (re-ran
+everything itself) found no bug, confirmed by direct test that the gate does inject
+query-dependent content-sensitivity thread 1 proved impossible for the ungated case (ratio
+0.02 near-closed vs. 0.47 forced-open), and traced the failure to depth-specific
+undertraining — the same construction reaches 0.32 accuracy at n_pairs=2, collapsing
+monotonically as n_pairs grows toward 8, a credit-assignment problem for a single
+read/write-shared scalar gate, not evidence the mechanism can't work. Not retrofitting the
+prediction to an easier depth post-hoc — any curriculum or dual-gate follow-up needs its
+own pre-registered protocol. Prediction B deferred (the trained n_pairs=8 gates never
+opened meaningfully, so there's no genuinely-gated model yet to test predictability
+against). Full account in `docs/threads/09-gated-spectral-recurrence.md`'s dated addendum.
 
 Other threads (2, 4, 5/8 per the priority table) are untouched — still just written up in
 `docs/threads/`, no code.
