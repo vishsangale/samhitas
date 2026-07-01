@@ -25,7 +25,13 @@ HEALTHY_BAND = (0.1, 10.0)
 # above or below that is a real numerical problem regardless of what the ratio says.
 # Heuristic thresholds, not derived from theory -- flagged as such, revisit if they turn
 # out to misclassify real cases once used at larger scale.
-EXPLOSION_ABS_THRESHOLD = 1e4
+#
+# EXPLOSION_ABS_THRESHOLD was 1e4 in v1; an Opus 4.8 review of the first smoke test found
+# the max gradient norm actually observed (healthy or not) topped out around 13, so 1e4
+# never fired post-training and the threshold was doing nothing. Lowered to 1e2 -- still
+# a comfortable margin above anything healthy, but low enough to actually catch a real
+# absolute blowup instead of only ever deferring to the ratio check.
+EXPLOSION_ABS_THRESHOLD = 1e2
 VANISHING_ABS_THRESHOLD = 1e-8
 
 
@@ -43,6 +49,16 @@ def gradient_norm_ratio(model, tokens: torch.Tensor, targets: torch.Tensor) -> d
     ratio = first_grad_norm / (last_grad_norm + 1e-12)
     lo, hi = HEALTHY_BAND
 
+    # Per-step effective decay rate (ratio^(1/(seq_len-1))), comparable directly against a
+    # parameterization's nominal (1-eps): added after a review found that comparing raw
+    # ratios at matched *nominal* eps across parameterizations can be misleading if one
+    # family's *effective* decay rate (governed by the eigenvalue bulk, not just the
+    # largest eigenvalue) differs from its nominal target -- this is the number that
+    # exposed diag_lowrank's init bug (see linear_recurrence.py).
+    seq_len = tokens.shape[1]
+    steps = max(seq_len - 1, 1)
+    effective_decay_rate = ratio ** (1.0 / steps) if ratio > 0 else 0.0
+
     if first_grad_norm > EXPLOSION_ABS_THRESHOLD or last_grad_norm > EXPLOSION_ABS_THRESHOLD:
         failure_mode = "exploding_absolute"
     elif first_grad_norm < VANISHING_ABS_THRESHOLD and last_grad_norm < VANISHING_ABS_THRESHOLD:
@@ -59,6 +75,7 @@ def gradient_norm_ratio(model, tokens: torch.Tensor, targets: torch.Tensor) -> d
         "first_grad_norm": first_grad_norm,
         "last_grad_norm": last_grad_norm,
         "ratio_first_over_last": ratio,
+        "effective_decay_rate": effective_decay_rate,
         "failure_mode": failure_mode,
         "healthy": failure_mode == "healthy",
     }

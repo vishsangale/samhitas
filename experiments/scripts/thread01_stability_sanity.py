@@ -13,6 +13,15 @@ way it does for thread 6's training-loss comparisons). The "free" baseline is in
 without any special spectral properties (a plain small-Gaussian init), specifically so it
 starts on equal footing with the constrained variants rather than being handed a
 coincidentally well-conditioned spectrum at init.
+
+v2, after an Opus 4.8 review of the v1 smoke test: VOCAB was 24, which for up to 128
+key-value pairs meant constant key collisions (most queries were structurally ambiguous),
+making eval_acc pure chance -- raised to 512. The summary used to report a single
+"max_healthy_seq_len" per config, which silently assumes degradation is monotonic in
+sequence length; true for the constrained variants but not for `free` (healthy, then
+vanishing, then healthy again, then exploding, in that order as length grows) -- replaced
+with a per-length healthy-fraction-across-seeds table plus the dominant failure mode at
+each length, which doesn't hide non-monotonic behavior.
 """
 
 import sys
@@ -21,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import json
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import torch
 import torch.nn.functional as F
@@ -32,17 +41,24 @@ from experiments.tasks import recall
 
 RUN_DIR = Path(__file__).resolve().parents[1] / "runs" / "thread01_sanity"
 
-VOCAB = 24
+VOCAB = 512  # was 24 -- caused constant key collisions at n_pairs > ~12, see module docstring
 HIDDEN = 64
 BATCH = 32
-N_PAIRS_LIST = [8, 16, 32, 64, 128]  # seq_len = 2n+1: 17, 33, 65, 129, 257
-# Added 0.005 (spectral radius 0.995): v1 only went down to eps=0.02, whose constrained
-# variants topped out well short of where the "free" baseline happened to reach (129) --
-# too coarse to tell whether a constrained config can reach that range too, and if so,
-# whether it does so without free's confirmed explosion risk just beyond it.
-EPS_LIST = [0.5, 0.1, 0.02, 0.005]
-SEEDS = [0, 1, 2]
-TRAIN_STEPS = 60
+# Grid widened per an Opus 4.8 review's recommendation after the v2 smoke test (which used
+# 5 seq lengths / 4 eps / 3 seeds): denser near the failure boundary, and eps points kept
+# in full (the review's advice: don't cut eps resolution, it's what an O(1/eps) fit needs).
+N_PAIRS_LIST = [8, 16, 24, 32, 48, 64, 96, 128, 192]  # seq_len = 2n+1: 17..385
+EPS_LIST = [0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002]
+# Review suggested 10 seeds; timed at TRAIN_STEPS=15 this grid's dominant cost (the O(seq_len)
+# python-loop training steps) put 10 seeds over the ~15min CPU budget, so trimmed to 7 --
+# above the methodology floor of 3, short of the review's ideal, a compute-constrained
+# compromise, noted here rather than silently done.
+SEEDS = list(range(7))
+TRAIN_STEPS = 15  # was 60 -- ratio_after_train tracked ratio_at_init closely in the v2
+# smoke test for the constrained variants (structurally expected: training moves theta/d/
+# U/V but the parameterization keeps enforcing the spectral bound regardless), so the
+# training loop's main remaining job is showing whether "free" drifts -- 15 steps still
+# does that far more cheaply than 60.
 TRAIN_LR = 1e-3
 
 
@@ -85,6 +101,7 @@ def run_one(mode, eps, n_pairs, seed):
         "first_grad_norm_after_train": after_train["first_grad_norm"],
         "last_grad_norm_after_train": after_train["last_grad_norm"],
         "ratio_after_train": after_train["ratio_first_over_last"],
+        "effective_decay_rate_after_train": after_train["effective_decay_rate"],
         "failure_mode_after_train": after_train["failure_mode"],
         "healthy_after_train": after_train["healthy"],
         "eval_acc": eval_acc,
@@ -104,33 +121,28 @@ def main():
                 results.append(r)
                 done += 1
                 print(f"[{done}/{total}] mode={mode} eps={eps} seq_len={r['seq_len']} "
-                      f"seed={seed} ratio_init={r['ratio_at_init']:.3g} "
-                      f"ratio_trained={r['ratio_after_train']:.3g} "
+                      f"seed={seed} ratio_trained={r['ratio_after_train']:.3g} "
+                      f"eff_rate={r['effective_decay_rate_after_train']:.4f} "
                       f"mode_trained={r['failure_mode_after_train']} acc={r['eval_acc']:.2f}")
 
     (RUN_DIR / "results.json").write_text(json.dumps(results, indent=2))
 
-    print("\n--- max healthy (post-training) seq_len per (mode, eps), and how it fails past that ---")
+    print("\n--- per (mode, eps, seq_len): healthy fraction across seeds, dominant failure "
+          "mode, mean effective decay rate vs. nominal target ---")
     by_config = defaultdict(list)
     for r in results:
-        by_config[(r["mode"], r["eps"])].append(r)
-    for (mode, eps), rs in sorted(by_config.items(), key=lambda kv: (kv[0][0], kv[0][1] or -1)):
-        healthy_lens = [r["seq_len"] for r in rs if r["healthy_after_train"]]
-        max_healthy = max(healthy_lens) if healthy_lens else None
-        mean_acc_at_max = None
-        if max_healthy is not None:
-            accs = [r["eval_acc"] for r in rs if r["seq_len"] == max_healthy]
-            mean_acc_at_max = sum(accs) / len(accs)
-        # First seq_len beyond max_healthy (or the shortest tested, if nothing was
-        # healthy) and how it actually failed -- vanished gracefully vs. exploded.
-        longer = sorted(set(r["seq_len"] for r in rs if max_healthy is None or r["seq_len"] > max_healthy))
-        failure_modes_next = None
-        if longer:
-            next_len = longer[0]
-            modes_at_next = [r["failure_mode_after_train"] for r in rs if r["seq_len"] == next_len]
-            failure_modes_next = f"at seq_len={next_len}: {modes_at_next}"
-        print(f"mode={mode} eps={eps}: max_healthy_seq_len={max_healthy} "
-              f"(acc there={mean_acc_at_max}) | first failure {failure_modes_next}")
+        by_config[(r["mode"], r["eps"], r["seq_len"])].append(r)
+    for (mode, eps, seq_len), rs in sorted(
+        by_config.items(), key=lambda kv: (kv[0][0], kv[0][1] or -1, kv[0][2])
+    ):
+        healthy_frac = sum(r["healthy_after_train"] for r in rs) / len(rs)
+        modes = Counter(r["failure_mode_after_train"] for r in rs)
+        dominant_mode = modes.most_common(1)[0][0]
+        mean_eff_rate = sum(r["effective_decay_rate_after_train"] for r in rs) / len(rs)
+        nominal = 1 - eps if eps is not None else None
+        print(f"mode={mode} eps={eps} seq_len={seq_len}: healthy_frac={healthy_frac:.2f} "
+              f"dominant_failure={dominant_mode} mean_eff_decay_rate={mean_eff_rate:.4f} "
+              f"nominal_target={nominal}")
 
 
 if __name__ == "__main__":

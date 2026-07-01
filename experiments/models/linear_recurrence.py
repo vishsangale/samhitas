@@ -47,6 +47,16 @@ class LinearRecurrentBlock(nn.Module):
       lies within ||E||_2 of some eigenvalue of D. So capping |d_i| <= (1-eps-delta) and
       ||E||_2 <= delta guarantees spectral radius <= (1-eps-delta) + delta = 1-eps,
       exactly, not just an upper-bound-in-spirit like the norm-capping version was.
+
+      That bound is a ceiling on the *largest* eigenvalue, not a claim about the rest of
+      them -- a second bug, caught by an Opus 4.8 review, not by running it: the diagonal
+      was initialized as diag_scale*tanh(N(0,4)), which spreads magnitudes across the
+      whole [0, diag_scale] range (mean |d_i| ~= 0.72*diag_scale, only the max entry near
+      the cap). Gradient decay over many steps is governed by the eigenvalue *bulk*, not
+      the single largest one, so this parameterization's *effective* decay rate came out
+      2-5x its nominal (1-eps), silently invalidating any matched-eps comparison against
+      orthogonal. Fixed by initializing the diagonal to saturate tanh for (almost) every
+      entry, so the whole diagonal -- not just its max -- sits near the target magnitude.
     """
 
     def __init__(self, hidden: int, input_dim: int, mode: str, eps: float = None,
@@ -66,11 +76,13 @@ class LinearRecurrentBlock(nn.Module):
             self.theta = nn.Parameter(torch.randn(hidden, hidden) * 0.01)
         else:  # diag_lowrank
             assert eps is not None
-            # Initialized with real spread (not zeros): started at d_raw=0 in an earlier
-            # version, which left the diagonal at exactly zero and (combined with the old
-            # norm-only capping, which only ever scales down) silently defeated the
-            # "spectral radius ~= 1-eps" design intent -- caught by actually running it.
-            self.d_raw = nn.Parameter(torch.randn(hidden) * 2.0)
+            # Random sign, magnitude saturating tanh (tanh(3) = 0.995) with only a little
+            # per-entry jitter -- so the diagonal's *bulk*, not just its max, sits near the
+            # cap. (v1 used torch.randn(hidden)*2.0, which spreads magnitudes across the
+            # whole range and understates the effective spectral radius -- see class
+            # docstring.)
+            sign = torch.where(torch.rand(hidden) < 0.5, -1.0, 1.0)
+            self.d_raw = nn.Parameter(sign * 3.0 + torch.randn(hidden) * 0.3)
             self.U = nn.Parameter(torch.randn(hidden, low_rank) / (hidden ** 0.5))
             self.V = nn.Parameter(torch.randn(hidden, low_rank) / (hidden ** 0.5))
             # delta reserved for E in the Bauer-Fike bound, scaled with eps rather than a
