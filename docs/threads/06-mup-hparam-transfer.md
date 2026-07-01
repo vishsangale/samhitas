@@ -157,6 +157,28 @@ the pre-registered 16x (30-60x+, since 8x already looks insufficient) to give mu
 shot at its asymptotic regime — but extend it to find out whether muP starts winning, not
 as a reason to discount the current adverse reading. The step-budget/threshold setup
 (`target_train_loss` + `max_steps`) is also a real confounder the first draft of this note
+
+**Post-hoc note, 2026-07-03 (`thread06_mup_widerange.py`, k up to 32x, dual thresholds,
+still CPU/toy scale, last smoke-test iteration for now):** extending to widths
+64/256/1024/2048 (k=1,4,16,32) with a finer LR grid (~2.3x spacing) and two loss
+thresholds gives the same qualitative answer as the narrower run, not a different one:
+muP's raw `base_lr` optimum keeps moving (0.015 -> 0.08 -> 0.4 -> 0.9 across widths at the
+looser threshold), and its log10 drift (1.43 decades, using the two widths that cleared
+the sanity gate) is still larger than SP's (0.33 decades) — ratio 0.23x, still failing the
+>=3x bar, in the same direction as before. One new, honest wrinkle: at this wider range SP
+is no longer perfectly flat either (its optimum drifts down: 0.015 -> 0.015 -> 0.007 ->
+0.003), and *both* arms hit the edge of the LR grid at width=2048, which the sanity gate
+correctly flags as inconclusive rather than reporting a misleading number — so the grid
+itself is now too narrow in both directions, on top of everything else.
+
+Stopping smoke-test iteration on this thread here rather than continuing to chase a
+cleaner number: two independent runs at two different width ranges now agree that muP's
+raw-LR transfer looks worse than SP's naive robustness at small/toy scale, and the
+remaining open question (does this flip once the width range, task, and step budget match
+what real muP validation actually needs — thousands of steps, a harder task, much larger
+widths) can only be answered by the pre-registered GPU run, not by further CPU tuning.
+Moving on to thread 1 (the first thread that's an actual candidate architecture, not a
+methodology check) rather than continuing to refine this smoke test.
 didn't flag: which configs count as "converged" is sensitive to one arbitrary cutoff and
 step ceiling, so the real run should report steps-to-target across several thresholds (or
 fit the loss curve) rather than hinge everything on one target value. LR grid resolution
