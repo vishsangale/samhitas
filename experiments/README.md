@@ -66,21 +66,30 @@ drift summary silently dropped noise-gated widths without saying so) — both fi
 Real run needs: an LR grid finer than 2x per step (not ~3.3x, which can't resolve a
 2x-tolerance claim), and a width range reaching the pre-registered 16x and ideally beyond.
 
-## Smoke-test finding (2026-07-03, CPU, `scripts/thread01_stability_sanity.py`)
+## Smoke-test finding v2 (2026-07-04, CPU, `scripts/thread01_stability_sanity.py`)
 
-First cut at thread 1. One real bug caught and fixed while building
-`models/linear_recurrence.py`: the diag_lowrank parameterization's spectral-norm capping
-only ever scaled a matrix *down*, and a near-zero init left it far below its intended
-target radius; fixed via a Bauer-Fike-theorem-based bound instead of norm-capping, which
-gives a rigorous spectral-*radius* guarantee rather than an approximate spectral-*norm*
-one. See the dated addendum in `docs/threads/01-stability-constrained-recurrence.md` for
-the full result — short version: orthogonal matches the linear-regime prediction almost
-exactly (0.98^257 predicted vs. measured within ~10%), diag_lowrank tracks the same trend
-but isn't a clean quantitative match yet, and the unconstrained "free" baseline reached
-further than any tested constrained config at these eps values by getting lucky at init,
-while separately confirmed to explode catastrophically just past that range — a
-distinction the current healthy/unhealthy binary metric doesn't capture and needs fixing
-(track raw gradient magnitude, not just the ratio) before this says anything conclusive.
+v1 (2026-07-03) caught one bug while building the model (see git history) and produced a
+first, inconclusive read. An Opus 4.8 review of v1 found two more real problems --
+VOCAB=24 caused constant key collisions in the recall task, making eval_acc chance-level
+noise, and the "diag_lowrank reaches half of orthogonal's range" reading was wrongly
+attributed to the delta-budget reservation when the actual cause was the diagonal init
+spreading eigenvalues across a wide range instead of concentrating near the target -- both
+fixed (VOCAB to 512; diagonal init to saturate tanh per-entry), plus an
+`effective_decay_rate` metric added and the misleading `max_healthy_seq_len` summary
+(assumed monotone degradation) replaced with a per-length healthy-fraction table.
+
+Re-ran at a wider grid (seq lengths 17-385, eps in {0.2..0.002}, 7 seeds, ~945 configs).
+See the dated addendum in `docs/threads/01-stability-constrained-recurrence.md` for the
+full result -- short version: orthogonal now matches its nominal target almost exactly at
+every eps/length tested; diag_lowrank tracks it closely with a small, consistent residual
+gap (~1.3x in failure-boundary sequence length) well inside the pre-registered
+factor-of-2 bound; and the free/constrained asymmetry is now dramatic and well-supported --
+at the longest tested length, 5 of 7 free seeds exploded (one to literal float infinity)
+while 2 vanished, vs. near-zero seed variance for both constrained parameterizations. Task
+accuracy remains exactly chance-level even after the vocab fix -- a separate, deeper issue
+(shared key/value embedding table + no positional signal, which a linear time-invariant
+recurrence structurally can't use to distinguish token roles) that doesn't affect the
+gradient-flow result but is still open.
 
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 

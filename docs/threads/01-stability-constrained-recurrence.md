@@ -148,3 +148,65 @@ gradient-norm magnitude alongside the ratio to separate explosion from graceful 
 extend the eps grid smaller (so constrained variants are tested at ranges comparable to
 where free happens to reach), and use a finer seq_len grid for an honest factor-of-2 read
 on the cross-parameterization question.
+
+**Post-hoc note, 2026-07-04 (Opus 4.8 review of the above, then a wider CPU run
+incorporating its findings -- still not the pre-registered run, but the strongest read so
+far).** The review confirmed the Bauer-Fike bound is implemented correctly (checked
+directly via `torch.linalg.eigvals`, not just the derivation) and found two real problems
+with the prior smoke test: VOCAB=24 caused constant key collisions in the recall task at
+the tested lengths, making every `eval_acc` number chance-level noise regardless of the
+model; and the "diag_lowrank reaches half of orthogonal's range" reading was *not*
+explained by the delta-budget reservation (negligible, ~0.0005 effect) as the previous
+note claimed -- the real cause was the diagonal's init spreading eigenvalue magnitudes
+across a wide range (mean |d_i| ~= 0.72x the cap, only the max entry near it), so decay
+was governed by the eigenvalue *bulk*, not the nominal target, giving diag_lowrank an
+*effective* eps 2-5x its nominal one and silently invalidating the matched-eps comparison.
+
+Both fixed (VOCAB raised to 512; diagonal init changed to saturate tanh for nearly every
+entry, not just the max), plus an `effective_decay_rate` metric added
+(`ratio^(1/(seq_len-1))`, directly comparable to a parameterization's nominal `1-eps`) and
+the misleading `max_healthy_seq_len` summary (assumed monotone degradation, false for
+`free`) replaced with a per-length healthy-fraction table. Re-ran at the review's
+recommended wider grid (seq lengths 17-385, eps in {0.2, ..., 0.002}, 7 seeds -- trimmed
+from the review's suggested 10 to fit a ~15-minute CPU budget):
+
+- **Orthogonal matches its nominal target almost exactly at every eps and every sequence
+  length tested** -- e.g. eps=0.1: measured effective decay rate 0.900-0.901 across all 9
+  lengths (nominal 0.9); eps=0.02: 0.980-0.981 (nominal 0.98). Essentially zero seed
+  variance. This is now about as clean a confirmation of the linear-regime prediction as a
+  smoke test can give.
+- **diag_lowrank now tracks orthogonal closely, and the residual gap is small, consistent,
+  and within the pre-registered factor-of-2 bound.** At eps=0.02: orthogonal healthy up to
+  seq_len=97, fails at 129; diag_lowrank healthy up to 65, fails at 97 -- one grid step
+  earlier, a ~1.3x gap in the failure boundary. At eps=0.01: orthogonal fails at 257,
+  diag_lowrank at 193 -- again ~1.3x. At eps=0.005 and 0.002, orthogonal stayed healthy
+  across the *entire* tested range (up to 385), so its true failure boundary is unmeasured
+  and at least as far out as diag_lowrank's (257 and ~385 respectively) -- consistent with,
+  not contradicting, the same small gap. This is the cross-parameterization prediction
+  holding up under its own pre-registered tolerance, for the first time with a fair
+  (matched-effective-radius) comparison.
+- **The free/constrained asymmetry is now dramatic and well-supported (7 seeds, not 3).**
+  At seq_len=385, free's 7 seeds split: 5 exploded (`exploding_absolute`, gradient norms
+  from ~200 up to literal float infinity on one seed), 2 vanished to near-zero. Orthogonal
+  and diag_lowrank, across every eps and length where they're healthy, show effective decay
+  rates varying only in the 3rd-4th decimal place seed to seed -- i.e. free's failure is
+  wild and unpredictable in both direction and magnitude, while the constrained variants'
+  behavior is essentially deterministic given eps, exactly the "predictable vs. uncontrolled
+  tail risk" distinction this thread's premise is about.
+- **Task accuracy is still exactly chance-level (0.00198 measured vs. 1/512=0.00195
+  theoretical) even after the vocab fix** -- a separate, deeper task-design issue, not
+  corrected here: keys and values share one embedding table with no positional/role
+  signal, and a *linear time-invariant* recurrence applies the identical per-step update
+  regardless of position, so it has no mechanism to distinguish "this token is a key" from
+  "this token is a value" from dynamics alone. This doesn't affect the gradient-flow result
+  (a property of the matrix, independent of whether the task is solvable), but means
+  `eval_acc` in this repo's results so far should be read as inert, not as evidence either
+  way, until the task is fixed (separate key/value embedding tables, or an explicit
+  positional/parity signal).
+
+Still not the pre-registered verdict (fixed HIDDEN=64, single task family, 7 not the
+methodology's usual >=3-but-more-is-better seed count, single held-fixed low_rank=4), but
+this is the first genuinely clean, mutually-consistent result across both falsifiable
+predictions in this thread's doc. Next real gaps: fix the recall task's learnability
+issue, and extend orthogonal's eps grid smaller / seq_len grid longer to actually find its
+failure boundary at eps<=0.005 rather than running off the end of the tested range.
