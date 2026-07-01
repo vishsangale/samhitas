@@ -126,3 +126,88 @@ subset of large-depth points" mechanism, not a novel technique.
 
 Not yet run. This doc exists to satisfy `docs/methodology.md`'s pre-registration rule
 before any of this thread's analysis code is written or run.
+
+**Post-hoc note, 2026-07-07 (`scripts/thread13_robust_gradient_flow.py`): falsified on the
+pre-registered joint criterion — but with the strongest partial support of the three
+attempts in this sub-line. Sub-line closed as pre-registered; no fourth estimator
+variant.**
+
+Ran the exact pre-registered protocol: same `sigma_w2`/depth grid as thread 12, 50 seeds,
+Theil-Sen robust regression (median of pairwise slopes on per-depth median `log(grad_norm)`
+across seeds) instead of ordinary least squares.
+
+```
+sigma_w2   xi_theory   L (Theil-Sen)   ratio
+1.30       4.82        8.14            1.690
+1.40       6.00        9.90            1.651
+1.60       10.15       14.64           1.442
+1.80       23.07       25.89           1.122
+1.90       51.92       39.43           0.759
+2.05       73.85       138.23          1.872
+2.20       23.19       92.30           3.981   <- only band violation
+2.40       12.71       34.19           2.691
+2.80       7.13        16.73           2.344
+```
+
+**Shape criterion: PASSES.** `log(L)` vs. `log(xi_theory)` correlation = 0.872 (need
+>=0.8), peak `L` at `sigma_w2=2.05` (in the required `{1.9, 2.05}` set) — a real
+improvement from thread 12's 0.524 correlation and wrong-location peak. **Magnitude
+criterion: FAILS**, by one interior point: `sigma_w2=2.2` gives ratio 3.981 against the
+`[1/3, 3]` band (all 6 other interior points are comfortably inside it) — down from thread
+12's 36.7x outlier at the same point, but still outside the pre-registered band.
+**Overall: FAIL**, since both criteria are jointly required and one interior point misses.
+
+Sent the result to an independent Opus 4.8 review before finalizing, per this repo's
+process. The review reproduced every number exactly (full grid re-run, deterministic given
+the fixed seeding) and independently re-implemented `theil_sen_slope` to check it against a
+vectorized reference — matched to 6 decimals, confirming the estimator itself is correctly
+implemented, not a bug inflating or deflating the result.
+
+**The review found the `sigma_w2=2.2` failure is not an isolated one-point fluke — it's
+the visible edge of a systematic chaotic-phase bias.** Comparing the theory's own per-layer
+log-slope (`log(chi_1)`) to the empirical Theil-Sen slope across the whole chaotic branch:
+the empirical slope is systematically shallower than theory at every chaotic-phase point
+tested — undershooting by ~2.7x at `sigma_w2=2.4`, ~4x at `sigma_w2=2.2`, and actually
+**flipping sign** at `sigma_w2=2.05` (theory predicts positive/growing, the empirical
+Theil-Sen slope came out slightly negative). The review traced this directly to the
+mechanism thread 12's review already found: at large depth in the chaotic phase, the
+per-seed `log(grad_norm)` distribution develops a heavy left tail (at `sigma_w2=2.2`,
+depth 362: median -0.75 but min -9.9, max +6.6; std rises from 0.06 at depth 2 to 3.4 at
+depth 362) and the *median itself* turns over non-monotonically (rises to depth ~90, then
+sags). Theil-Sen substantially tames the effect of the heavy tail (that's why the worst
+ratio dropped from thread 12's 36.7x to 4x here, and why the shape criterion now passes
+cleanly) — but it cannot remove a genuine turnover in the underlying median curve, which
+flattens the net fitted slope toward zero regardless of estimator robustness.
+
+**Important nuance the review flagged, worth stating precisely:** the magnitude
+criterion's interior-xi window (`[5, 60]`) happens to exclude `sigma_w2=2.05` — which is
+where theory and the empirical estimate disagree *most* (the sign flip). So "`sigma_w2=2.2`
+is the one failure" is partly an artifact of which points the window happens to test; the
+underlying chaotic-phase slope undershoot is systematic across the branch (2.7x-4x
+undershoot at 2.2/2.4, sign flip at 2.05), not a single localized miss. The review also
+checked an alternative aggregation (`log(mean(grad))` instead of `median(log(grad))` —
+arguably more theory-faithful, since the theory is stated in terms of `E[grad^2]`) and
+found it pulls `sigma_w2=2.2` into the band (ratio 2.53) but blows up `sigma_w2=2.05` to
+13x instead — confirming no single untuned point estimator cleanly passes every point here;
+this is a genuine systematic effect, not an estimator away from working.
+
+**Verdict, adopting the review's framing: falsified on the pre-registered joint criterion —
+with the strongest partial support of the three attempts in this sub-line.** Shape went
+from failing (thread 12: 0.524, wrong peak) to a clean pass (0.872, correct peak).
+Worst-point magnitude went from 36.7x (thread 12) to 3.98x (this thread) — a real,
+substantial improvement from switching to robust regression, just not enough to clear the
+pre-registered band. This is not "the theory is wrong here" so much as "the depth-scale
+*ordering and peak location* now clearly track theory, but a real systematic bias in the
+chaotic-phase backward pass (heavy-tailed large-depth variance plus a non-monotonic
+turnover) prevents a clean magnitude match with any untuned point estimator tried so far."
+
+**Per the pre-registered plan, this was the last planned attempt in this measurement-
+refinement sub-line (thread 2's loss metric -> thread 12's OLS fit -> this thread's
+Theil-Sen fit) — closing it here rather than trying a fourth estimator variant.** The
+residual failure is not the kind of thing a different regression trick would likely fix
+(the review found no single untuned estimator passes every point); a genuine next attempt
+on this idea needs a structurally different measurement — e.g. a task whose inputs start
+closer to the theory's fixed point (avoiding the transient/turnover regime this task's
+near-orthogonal one-hot inputs sit in), or per-layer rather than per-model gradient
+tracking — and its own fresh thread doc, matching how the gate-family sub-line closed after
+three attempts (`docs/threads/11-dual-gate-spectral-recurrence.md`).

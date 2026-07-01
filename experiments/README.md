@@ -34,6 +34,7 @@ experiments/
     thread11_dual_gate_sanity.py  # gate-family sub-line, see findings below -- built
     thread02_criticality_sanity.py  # depth x sigma_w2 sweep, see finding below -- built
     thread12_gradient_flow_depth_scale.py  # grad-flow length vs xi, see finding below -- built
+    thread13_robust_gradient_flow.py  # Theil-Sen version of thread 12, see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
@@ -231,6 +232,28 @@ different estimator, pre-registered fresh before running, would be needed to tes
 window-restricted signal for real. Full account in
 `docs/threads/12-gradient-flow-depth-scale.md`'s dated addendum.
 
+## Thread 13 finding (2026-07-07, CPU, `scripts/thread13_robust_gradient_flow.py`) — closes the criticality-measurement-refinement sub-line
+
+Second, explicitly-last follow-up to thread 12: same `sigma_w2`/depth grid, but 50 seeds
+and Theil-Sen robust regression (median of pairwise slopes on per-depth medians) instead of
+30 seeds and ordinary least squares -- targeting the heavy-tailed backward-pass variance a
+review traced thread 12's failure to. **Falsified on the pre-registered joint criterion,
+but with the strongest partial support of the three attempts.** Shape criterion now passes
+cleanly (correlation 0.872, correct peak at `sigma_w2=2.05`, up from thread 12's 0.524 and
+wrong-location peak). Magnitude criterion still fails, but only at one interior point
+(`sigma_w2=2.2`, ratio 3.98 vs. the 3.0 band) instead of thread 12's 36.7x outlier at the
+same point. An Opus 4.8 review reproduced every number exactly and independently verified
+the Theil-Sen implementation, then found the `sigma_w2=2.2` miss isn't an isolated fluke --
+it's the visible edge of a systematic chaotic-phase bias (empirical slope undershoots
+theory by 2.7-4x across the chaotic branch, even flips sign at `sigma_w2=2.05`, which the
+magnitude window happens to exclude). No single untuned point estimator (Theil-Sen on
+medians, or on means) cleanly passes every chaotic-phase point. **Closing this
+measurement-refinement sub-line (thread 2 -> thread 12 -> thread 13) as pre-registered** --
+any further attempt needs a structurally different measurement (e.g. a task whose inputs
+start closer to theory's fixed point, or per-layer gradient tracking), not a fourth
+regression-estimator variant. Full account in
+`docs/threads/13-robust-gradient-flow-depth-scale.md`'s dated addendum.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
@@ -262,11 +285,10 @@ window-restricted signal for real. Full account in
 
 ## Next step
 
-Not yet decided: thread 2's gradient-flow-depth-scale follow-up (thread 12) also falsified
-as specified, though its own review diagnosed a specific estimator confound (a single
-global depth-fit conflates transient, near-asymptotic, and finite-width-noise-corrupted
-regimes) that a *fresh*, differently-designed pre-registration could test. Options: build
-that fresh thread (pre-specify a near-asymptotic-only or piecewise fit window *before*
-running), or move to the next untouched portfolio item (optimal-control integrators,
-priority 4). Threads 1 and 6 are closed/parked for now; the gate-family sub-line (9/10/11)
-is closed as a negative result; see `RESEARCH.md` section 8 for the full status.
+The criticality-guided-init measurement-refinement sub-line (thread 2 -> 12 -> 13) is now
+closed, mirroring the gate-family sub-line (9/10/11). Not yet decided: a structurally
+different measurement for the same underlying idea (e.g. a task whose inputs start closer
+to theory's fixed point, or per-layer gradient tracking, per thread 13's closing note) under
+its own fresh thread, or move to the next untouched portfolio item (optimal-control
+integrators, priority 4). Threads 1 and 6 are closed/parked for now; see `RESEARCH.md`
+section 8 for the full status.

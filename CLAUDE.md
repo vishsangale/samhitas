@@ -140,3 +140,28 @@ different estimator (near-asymptotic-only or piecewise fit), pre-specified befor
 would need its own fresh pre-registration to test the window-restricted signal for real —
 not yet started. See `docs/threads/12-gradient-flow-depth-scale.md`'s dated addendum for
 the full account.
+
+Thread 13 (second, explicitly-last follow-up, freshly pre-registered) was then built and
+run — **also falsified on the joint criterion, but the closest of the three attempts;
+sub-line now closed.** Before designing it, ruled out two candidate "transient" mechanisms:
+a correlation-map-based one turned out to use the wrong recursion entirely (`c=1` is
+*repelling* in the chaotic phase, so trajectories move away from it, not toward it), and
+the actually-relevant variance-map transient converges in ~6 layers, far too fast to
+explain a failure past depth 100. Targeted the diagnosed mechanism directly instead: same
+`sigma_w2`/depth grid as thread 12 (no window search), 50 seeds (up from 30), Theil-Sen
+robust regression instead of ordinary least squares. **Shape criterion now passes cleanly**
+(correlation 0.872, correct peak at `sigma_w2=2.05`, vs. thread 12's failing 0.524 and
+wrong peak). **Magnitude criterion still fails**, but only at one interior point
+(`sigma_w2=2.2`, ratio 3.98 vs. the 3.0 band) instead of thread 12's 36.7x outlier there. An
+Opus review reproduced every number exactly, independently verified the Theil-Sen
+implementation, and found the `sigma_w2=2.2` miss is the edge of a systematic chaotic-phase
+bias (empirical slope undershoots theory 2.7-4x across the branch, even sign-flips at
+`sigma_w2=2.05`, which the magnitude window happens to exclude) — not an isolated fluke; no
+untuned point estimator tried cleanly passes every chaotic-phase point. **Verdict:
+falsified on the pre-registered joint criterion, with the strongest partial support of the
+three attempts.** Per the pre-registered plan, this closes the criticality-guided-init
+measurement-refinement sub-line (thread 2 -> 12 -> 13) — a genuine next attempt needs a
+structurally different measurement (e.g. a task whose inputs start closer to theory's fixed
+point, or per-layer gradient tracking), not a fourth regression-estimator variant. See
+`docs/threads/13-robust-gradient-flow-depth-scale.md`'s dated addendum for the full
+account.

@@ -143,7 +143,7 @@ preserved in this repo's history; the concrete changes it produced:
 |---|--------|--------------|--------------------------|---------------------|
 | 1 | [muP-style hyperparameter transfer](docs/threads/06-mup-hparam-transfer.md) | Tensor Programs / muP (infinite-width limits) | LR optimal at width W stays within 2x of optimal at k*W under the derived scaling rule; naive parameterization drifts by 10x+ | Low — this *is* the scale-transfer methodology, made explicit |
 | 2 | [Stability-constrained recurrence](docs/threads/01-stability-constrained-recurrence.md) | Control theory, Lyapunov stability, Koopman operators | Depth-vs-spectral-bound relationship (linear regime) holds across different structured parameterizations, not just one construction | Low — general stability constraint, parallel-scan friendly |
-| 3 | [Criticality-guided initialization](docs/threads/02-criticality-guided-init.md) — **prediction A (loss-based) falsified 2026-07-07**; [thread 12 follow-up](docs/threads/12-gradient-flow-depth-scale.md) (gradient-flow depth scale) **also falsified 2026-07-07**, estimator confound diagnosed | Mean-field theory / statistical mechanics (pointwise, unnormalized layers only) | Empirical (sigma, depth) trainability boundary matches the theory's derived `xi(sigma)` depth-scale curve | Low — a derivation procedure, not a fixed prior |
+| 3 | [Criticality-guided initialization](docs/threads/02-criticality-guided-init.md) — **prediction A falsified 2026-07-07**; [thread 12](docs/threads/12-gradient-flow-depth-scale.md) and [thread 13](docs/threads/13-robust-gradient-flow-depth-scale.md) follow-ups **also falsified 2026-07-07** — measurement-refinement sub-line closed, thread 13 came closest (shape criterion passed) | Mean-field theory / statistical mechanics (pointwise, unnormalized layers only) | Empirical (sigma, depth) trainability boundary matches the theory's derived `xi(sigma)` depth-scale curve | Low — a derivation procedure, not a fixed prior |
 | 4 | [Optimal-control integrators for depth](docs/threads/04-optimal-control-integrators.md) | Pontryagin maximum principle, ODE view of ResNets, numerical integrator theory | On a synthetic smooth-target task (small-step regime), required depth drops with integrator order per truncation-error theory, FLOP-honest | Low — still dense matmul stacks; likely falsified outside the constructed small-step regime |
 | 5 | [Fisher/K-FAC-preconditioned optimization](docs/threads/08-natural-gradient-preconditioning.md) | Information geometry, natural gradient, K-FAC | Fisher condition number near init predicts steps-to-target-loss ranking across architectures; preconditioning benefit scales with how ill-conditioned the architecture is | Low — general optimization-geometry statement |
 | 6 | [PAC-Bayes / flatness as design target](docs/threads/07-pac-bayes-flatness.md) | PAC-Bayes bounds, loss-landscape flatness | A cheap flatness proxy ranks architecturally distinct models (at matched train loss) in the same order as their actual test gap | Low — landscape-geometry measurement, not a layer |
@@ -294,13 +294,40 @@ properly different estimator (near-asymptotic-only or piecewise fit), pre-specif
 running, would need its own fresh pre-registration to test the window-restricted signal for
 real. Full account in `docs/threads/12-gradient-flow-depth-scale.md`'s dated addendum.
 
+**Thread 13 (second, explicitly-last follow-up to thread 12, freshly pre-registered): also
+falsified on the joint criterion, but the closest of the three attempts — sub-line now
+closed.** Before designing it, checked and ruled out two candidate "transient" mechanisms
+(a correlation-map-based one turned out to use the wrong recursion entirely — `c=1` is a
+*repelling* fixed point in the chaotic phase, so trajectories move away from it, not
+toward it; the actually-relevant variance-map transient converges in ~6 layers, far too
+fast to explain a failure persisting past depth 100). Targeted the review-diagnosed
+mechanism directly instead: same `sigma_w2`/depth grid as thread 12 (no window search), 50
+seeds (up from 30), Theil-Sen robust regression (median of pairwise slopes on per-depth
+medians) instead of ordinary least squares. Result: **shape criterion now passes cleanly**
+(correlation 0.872, correct peak at `sigma_w2=2.05`, vs. thread 12's failing 0.524 and
+wrong-location peak). **Magnitude criterion still fails**, but only at one interior point
+(`sigma_w2=2.2`, ratio 3.98 vs. the 3.0 band) instead of thread 12's 36.7x outlier there. An
+Opus 4.8 review reproduced every number exactly, independently verified the Theil-Sen
+implementation, and found the `sigma_w2=2.2` miss is the visible edge of a systematic
+chaotic-phase bias (empirical slope undershoots theory by 2.7-4x across the whole chaotic
+branch, even sign-flips at `sigma_w2=2.05` — which the magnitude window's `[5,60]` interior
+band happens to exclude) rather than an isolated fluke; no untuned point estimator tried
+(median- or mean-based) cleanly passes every chaotic-phase point. **Verdict: falsified on
+the pre-registered joint criterion, with the strongest partial support of the three
+attempts in this sub-line.** Per the pre-registered plan, this closes the
+measurement-refinement sub-line (thread 2's loss metric -> thread 12's OLS fit -> thread
+13's Theil-Sen fit) — a genuine next attempt on this idea needs a structurally different
+measurement (e.g. a task whose inputs start closer to theory's fixed point, or per-layer
+gradient tracking), not a fourth regression-estimator variant. Full account in
+`docs/threads/13-robust-gradient-flow-depth-scale.md`'s dated addendum.
+
 Other threads (4, 5/8 per the priority table) are untouched — still just written up in
 `docs/threads/`, no code.
 
-**Immediate next step:** either (a) design and pre-register a differently-estimated
-follow-up to the gradient-flow-depth-scale claim (a near-asymptotic-only or piecewise fit
-window, specified in advance rather than chosen to match what recovered signal in thread
-12's exploratory check), or (b) move on to the next untouched item in the priority table —
-optimal-control integrators (priority 4), Fisher/K-FAC preconditioning (priority 5),
-PAC-Bayes/flatness (priority 6) — revisiting the two deferred threads only once their
-blocking issues are resolved on paper. Not yet decided which.
+**Immediate next step:** either (a) design and pre-register a structurally different
+measurement for the criticality-guided-init idea (per thread 13's closing note — not
+another regression-estimator variant on the same task), or (b) move on to the next
+untouched item in the priority table — optimal-control integrators (priority 4),
+Fisher/K-FAC preconditioning (priority 5), PAC-Bayes/flatness (priority 6) — revisiting the
+two deferred threads only once their blocking issues are resolved on paper. Not yet decided
+which.
