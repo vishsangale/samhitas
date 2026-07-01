@@ -229,6 +229,23 @@ pursued: an architectural change (independent read/write gates instead of one sh
 scalar) — needs its own fresh pre-registration, not a further training-schedule variant.
 Full account in `docs/threads/10-curriculum-gated-recurrence.md`'s dated addendum.
 
+**Thread 11 (dual-gate follow-up to threads 9/10): also falsified — closes the sub-line as
+a negative result.** Independent read/write gates (LSTM-style), same direct-training
+protocol as thread 9: best-of-grid mean accuracy 0.032, indistinguishable from thread 9
+(0.032) and thread 10 (0.039). Three different gate interventions now converge on the same
+number. An Opus 4.8 review reproduced this and ruled out two competing explanations
+directly: forcing the write gate open at init didn't help (training pushed it back toward
+closed), and quadrupling hidden size (64->256) didn't help either (ruling out a
+hidden-vs-vocab capacity limit). Direct measurement showed the write-relevant gate barely
+moves from init across all three architectures — training finds no signal to open the
+content-selective write path at n_pairs=8, regardless of gate design. **Closing this
+sub-line (gate-on-spectral-core mechanism, recall task, this depth) as a negative result**,
+framed as an optimization/learnability limit (no discoverable gradient signal at this
+depth/budget), not a capacity or architecture one. This was the pre-registered last attempt
+on this gate family; any further attempt needs a structurally different mechanism (e.g.
+explicit key-addressed memory) and its own fresh thread doc. Full account in
+`docs/threads/11-dual-gate-spectral-recurrence.md`'s dated addendum.
+
 Other threads (2, 4, 5/8 per the priority table) are untouched — still just written up in
 `docs/threads/`, no code.
 4. Proceed through the rest of the priority table in order — criticality-guided init

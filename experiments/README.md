@@ -153,6 +153,27 @@ different-in-kind thing to try is architectural (independent read/write gates), 
 need its own fresh pre-registration. Full account in
 `docs/threads/10-curriculum-gated-recurrence.md`'s dated addendum.
 
+## Thread 11 finding (2026-07-06, CPU, `scripts/thread11_dual_gate_sanity.py`) — closes the gate-family sub-line
+
+Tested independent read/write gates (LSTM-style, instead of thread 9's single shared gate)
+under the exact same protocol as thread 9's direct training. **Falsified as pre-registered**:
+best-of-grid mean accuracy 0.032, statistically indistinguishable from thread 9's
+direct-training control (0.032) and thread 10's curriculum control (0.039). Three
+meaningfully different gate interventions now converge on the same ~0.03 number. An Opus 4.8
+review reproduced this first-party and ruled out two competing explanations directly rather
+than by assumption: forcing the write gate open at init didn't help (training pushed it back
+toward closed, 0.50 -> 0.31, so it isn't a saturated-init trap), and quadrupling hidden size
+(64 -> 256) didn't help either (still ~0.038 best), ruling out a hidden-vs-vocab capacity
+limit. Direct measurement showed the write-relevant gate barely moves from its init value
+(~0.021 -> ~0.025-0.026) across all three architectures after the full 2000-step run --
+training finds no signal to open the content-selective write path at this depth, regardless
+of gate design or initialization. **Closing this sub-line (gate-on-spectral-core mechanism,
+recall task, n_pairs=8) as a negative result**, framed as an optimization/learnability
+limit, not a capacity or architecture one -- per the pre-registered plan, this was the last
+planned gate variant; a further attempt needs a structurally different mechanism and its own
+thread doc, not another gate tweak. Full account in
+`docs/threads/11-dual-gate-spectral-recurrence.md`'s dated addendum.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting

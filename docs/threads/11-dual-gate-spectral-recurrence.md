@@ -127,3 +127,59 @@ the gating mechanism itself, which is well-established.
 
 Not yet implemented. This doc exists to satisfy `docs/methodology.md`'s pre-registration
 rule before any dual-gate code is written.
+
+**Post-hoc note, 2026-07-06 (`scripts/thread11_dual_gate_sanity.py`): falsified as
+pre-registered — closes the gate-family sub-line as a negative result.**
+
+Ran the exact pre-registered protocol (direct training, not curriculum, so this isolates
+the architecture change from thread 10's schedule change): vocab=512, hidden=64, eps=0.1,
+n_pairs=8, 2000 fresh-random-batch Adam steps, same LR grid and 5 seeds as threads 9/10.
+
+- **Best-of-grid mean accuracy: 0.032** (lr=3e-4) — statistically indistinguishable from
+  thread 9's direct-training control (0.032, not re-run) and thread 10's curriculum control
+  (0.039, not re-run). **Falsified.**
+
+Three meaningfully different interventions on the gate mechanism — a single shared gate
+(thread 9), the same shared gate under a curriculum schedule (thread 10), and independent
+read/write gates (this thread) — all converged to the same ~0.03 accuracy. As pre-registered,
+this is the last planned attempt on this sub-line, so before closing it, sent the full
+three-thread picture (including my own hypothesis that this convergence means the bottleneck
+isn't the gate mechanism, but possibly hidden size relative to vocab instead) to an
+independent Opus 4.8 review, which reproduced the numbers first-party and ran two targeted
+follow-up checks rather than trusting the hypothesis:
+
+- **Not a saturated-init trap.** Forcing the write gate open at init (bias=0, ~0.50 instead
+  of ~0.02) did not help — accuracy stayed ~0.01, and *training actively pushed the gate
+  back down* toward closed (0.50 -> 0.31) over the course of training. The optimizer isn't
+  stuck behind a sigmoid saturation wall; it is choosing to keep the gate closed because
+  opening it doesn't reduce the loss at this depth/budget.
+- **Not a capacity limit.** Quadrupling hidden size (64 -> 256, i.e. from 1/8th to half of
+  vocab=512) on the dual-gate model bought essentially nothing (0.038 best, still far below
+  0.30) — ruling out my own "hidden too small relative to vocab" hypothesis directly, not
+  just by assumption.
+- **Direct measurement of how much the gates moved from init:** across all three
+  architectures, the write-relevant gate value moved from ~0.021 to only ~0.025-0.026 after
+  the full 2000-step training run (every seed) — i.e. training does essentially nothing to
+  the content-selective write path at this depth, regardless of which of the three gate
+  designs is used or whether the gate starts open or closed.
+
+**Corrected framing from the review, adopted here:** this is an **optimization/learnability**
+finding, not a capacity one — there is no usable gradient signal pushing the write path to
+open at n_pairs=8 within this budget, across every gate design and initialization tried. The
+gate mechanism *can* inject content-dependence in principle (thread 9's construction test:
+query-swap response ratio 0.02 near-closed vs. 0.47 forced-open) and the model *can* learn
+recall at shallower depths (thread 9's review: 0.32 at n_pairs=2) — but nothing tried so far
+finds a training signal that carries that capability to n_pairs=8.
+
+**Closing this sub-line (single-gate-family-on-spectral-core mechanism, recall task, this
+depth) as a negative result, per the pre-registered plan.** Three independent gate
+variants plus a forced-open initialization all fail identically; a fourth gate tweak is not
+expected to behave differently given this evidence. If this line is revisited, it needs a
+genuinely different kind of intervention — the review's own suggestion, not chased further
+here since it's optional polish rather than a new finding: confirm under a much more
+generous optimization budget (10k+ steps, or repeated-batch overfitting on a small fixed
+training set) that even a very forgiving setup never opens the gate at depth 8, which would
+further support "no gradient signal exists here" over "just needed more steps." Otherwise,
+any real next attempt on recall at this depth belongs to a structurally different mechanism
+(e.g. explicit key-addressed memory) and its own fresh thread doc — not another variant of
+"gate on top of thread 1's spectral core."

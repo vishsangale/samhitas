@@ -78,10 +78,19 @@ trained gates never opened meaningfully, so there's nothing informative to test 
 Thread 10 (curriculum follow-up, pre-registered separately per that rule) also
 **falsified as specified**: a 3-stage curriculum (n_pairs 2->4->8, same 2000-step total
 compute as thread 9's direct training) reached only 0.039 mean accuracy vs. the 0.30 target
-— barely above thread 9's own direct-training control (0.032). Two independent recovery
-attempts (direct training, curriculum) have now failed at the pre-registered depth, while
-mechanism-level evidence still says the underlying idea (gate genuinely injects
-content-dependence) isn't structurally dead. Next step, if pursued, is architectural
-(independent read/write gates) — needs its own fresh thread doc, not a further
-training-schedule variant. See `docs/threads/10-curriculum-gated-recurrence.md`'s dated
-addendum.
+— barely above thread 9's own direct-training control (0.032). See
+`docs/threads/10-curriculum-gated-recurrence.md`'s dated addendum.
+
+Thread 11 (dual-gate follow-up, independent read/write gates instead of one shared scalar)
+also **falsified — closes the gate-family sub-line as a negative result.** Best-of-grid
+mean accuracy 0.032, indistinguishable from threads 9 and 10. Three different gate
+interventions now converge on the same number; an Opus review ruled out both a
+saturated-init trap (forcing the write gate open didn't help — training pushed it back
+toward closed) and a hidden-vs-vocab capacity limit (quadrupling hidden size to 256 didn't
+help either) as explanations. The write-relevant gate barely moves from init across all
+three architectures — **this is an optimization/learnability limit (no discoverable
+gradient signal at this depth/budget), not a capacity or architecture one.** Per the
+pre-registered plan, this was the last attempt on this gate family; any further attempt on
+recall at this depth needs a structurally different mechanism (e.g. explicit key-addressed
+memory) and its own fresh thread doc, not another gate variant. See
+`docs/threads/11-dual-gate-spectral-recurrence.md`'s dated addendum.
