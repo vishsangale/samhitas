@@ -286,9 +286,11 @@ regression-estimator variant. Full account in
 ## Next step
 
 The criticality-guided-init measurement-refinement sub-line (thread 2 -> 12 -> 13) is now
-closed, mirroring the gate-family sub-line (9/10/11). Not yet decided: a structurally
-different measurement for the same underlying idea (e.g. a task whose inputs start closer
-to theory's fixed point, or per-layer gradient tracking, per thread 13's closing note) under
-its own fresh thread, or move to the next untouched portfolio item (optimal-control
-integrators, priority 4). Threads 1 and 6 are closed/parked for now; see `RESEARCH.md`
-section 8 for the full status.
+closed, mirroring the gate-family sub-line (9/10/11). A full-portfolio review
+(`docs/reviews/2026-07-07-portfolio-review.md`) has since ranked the candidate next steps:
+(1) muP coordinate check (unblocks thread 6), (2) finite-width fluctuation test for the
+criticality anomaly, (3) generous-budget gate check, (4) a new recall-mechanism thread
+(composition / short-conv / DeltaNet-style state, carrying thread 9's deferred prediction
+B) — each needing its own pre-registered thread doc before code. It also recorded
+corrections to threads 6/10/11/13's write-ups (see their dated 2026-07-07 notes). Threads
+1 and 6 are closed/parked for now; see `RESEARCH.md` section 8 for the full status.

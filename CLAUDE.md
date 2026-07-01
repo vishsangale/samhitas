@@ -7,7 +7,11 @@ and environment notes established during development, not a restatement of the p
 ## Environment
 
 - This sandbox is CPU-only, no GPU (`nvidia-smi` fails, `torch.cuda.is_available()` is
-  False). 4 cores (`nproc`). torch and numpy are already `pip install`-ed system-wide.
+  False). 4 cores (`nproc`). torch and numpy are already `pip install`-ed system-wide —
+  **but not in every session type**: fresh remote/cloud containers (2026-07-07 observation)
+  start without them, and a `pip install torch` through the proxy has been seen to time
+  out. Check `python3 -c "import torch"` before assuming smoke tests can run; install via
+  `pip install -r experiments/requirements.txt` if missing.
 - Real GPU-day-scale runs (per `docs/methodology.md`'s compute budget) happen on the
   user's own hardware elsewhere. Code here just needs to CPU-smoke-test cleanly at toy
   scale — it does not need to hit the methodology's real compute budget itself.
@@ -165,3 +169,25 @@ structurally different measurement (e.g. a task whose inputs start closer to the
 point, or per-layer gradient tracking), not a fourth regression-estimator variant. See
 `docs/threads/13-robust-gradient-flow-depth-scale.md`'s dated addendum for the full
 account.
+
+As of 2026-07-07 (later the same working session): ran a **full-portfolio review** — all
+ideas/design/code/results/interpretations, an independent Opus code/design meta-review,
+and four Sonnet literature reviews — written up in
+`docs/reviews/2026-07-07-portfolio-review.md`, with dated correction notes added to
+threads 6/10/11/13. Headline corrections to keep in mind when reading the summaries above:
+thread 10's "same total compute" was matched *steps*, not FLOPs (curriculum actually used
+~59% of the control's compute — verdict unchanged); the gate-family closing frame
+"optimization/learnability limit, not capacity or architecture" is half-overstated (the
+generous-budget check that would earn "learnability limit" was specified but never run,
+and the literature says this single-gated-recurrence class is a known-insufficient
+architecture for multi-pair recall — the capacity half *is* supported, via Zoology's lower
+bound); thread 13's residual chaotic-phase bias is plausibly *predicted* finite-width
+physics (Hanin & Nica log-normal gradients; depth/width up to ~1.4 on this grid is outside
+mean-field's controlled regime), not mere measurement error; thread 6's muP Adam
+multipliers were statically verified correct, shifting suspicion to the task
+(grokking/weight-decay dynamics) — a cheap coordinate check is the decisive next step. The
+review ends with a ranked next-step list (RESEARCH.md section 8 has the short version):
+(1) muP coordinate check, (2) finite-width fluctuation test for the criticality anomaly,
+(3) generous-budget gate check, (4) new recall-mechanism thread (composition / short-conv /
+DeltaNet-style state, carrying thread 9's deferred prediction B). Each needs its own
+pre-registered thread doc before code. None started.

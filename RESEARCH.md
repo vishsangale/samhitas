@@ -1,7 +1,10 @@
 # Mathematical Foundations for Neural Architecture Search — Research Plan (Draft v1)
 
-Status: draft v1, revised after an adversarial review pass (see section 5). Everything
-here is still a hypothesis, not a result — nothing in this repo has been run yet.
+Status: living plan. Originally draft v1, revised after an adversarial review pass
+(section 5); sections 1-7 are the standing plan, section 8 tracks per-thread status as
+experiments run (several threads now have recorded verdicts — the "nothing has been run
+yet" framing this header once carried is long stale). A full-portfolio review with a
+ranked next-step list lives in `docs/reviews/2026-07-07-portfolio-review.md`.
 
 ## 1. Thesis
 
@@ -147,7 +150,7 @@ preserved in this repo's history; the concrete changes it produced:
 | 4 | [Optimal-control integrators for depth](docs/threads/04-optimal-control-integrators.md) | Pontryagin maximum principle, ODE view of ResNets, numerical integrator theory | On a synthetic smooth-target task (small-step regime), required depth drops with integrator order per truncation-error theory, FLOP-honest | Low — still dense matmul stacks; likely falsified outside the constructed small-step regime |
 | 5 | [Fisher/K-FAC-preconditioned optimization](docs/threads/08-natural-gradient-preconditioning.md) | Information geometry, natural gradient, K-FAC | Fisher condition number near init predicts steps-to-target-loss ranking across architectures; preconditioning benefit scales with how ill-conditioned the architecture is | Low — general optimization-geometry statement |
 | 6 | [PAC-Bayes / flatness as design target](docs/threads/07-pac-bayes-flatness.md) | PAC-Bayes bounds, loss-landscape flatness | A cheap flatness proxy ranks architecturally distinct models (at matched train loss) in the same order as their actual test gap | Low — landscape-geometry measurement, not a layer |
-| 2b | [Gated spectral recurrence](docs/threads/09-gated-spectral-recurrence.md) (extends thread 1) | Control theory + linear time-varying systems | A minimal input-dependent retention gate on thread 1's spectrally-constrained core makes associative recall solvable (>=0.30 mean acc vs. chance) while the gated failure boundary stays within 2x of the ungated one at matched eps | Low — same class of update Mamba already runs efficiently |
+| 2b | [Gated spectral recurrence](docs/threads/09-gated-spectral-recurrence.md) (extends thread 1) — **prediction A falsified 2026-07-06**; [thread 10](docs/threads/10-curriculum-gated-recurrence.md) (curriculum) and [thread 11](docs/threads/11-dual-gate-spectral-recurrence.md) (dual gate) follow-ups **also falsified 2026-07-06** — gate-family sub-line closed as a negative result; prediction B still deferred (no gated model ever learned recall) | Control theory + linear time-varying systems | A minimal input-dependent retention gate on thread 1's spectrally-constrained core makes associative recall solvable (>=0.30 mean acc vs. chance) while the gated failure boundary stays within 2x of the ungated one at matched eps | Low — same class of update Mamba already runs efficiently |
 
 **Deferred (blocked on unresolved issues, see thread docs for what's needed before building):**
 
@@ -172,7 +175,7 @@ status below). Still not built: tiny char/token-level LM, small vision classific
 the generalized `scaling_sweep.py` and `curvature.py` harness pieces threads 2/4/7/8 will
 need.
 
-## 8. Status as of 2026-07-05 and immediate next step
+## 8. Status as of 2026-07-07 and immediate next step
 
 **Thread 6 (muP-style hyperparameter transfer): parked, inconclusive at toy scale.** Two
 CPU runs (8x and 32x width ranges) both ran *against* the prediction (muP's raw-LR
@@ -324,10 +327,17 @@ gradient tracking), not a fourth regression-estimator variant. Full account in
 Other threads (4, 5/8 per the priority table) are untouched — still just written up in
 `docs/threads/`, no code.
 
-**Immediate next step:** either (a) design and pre-register a structurally different
-measurement for the criticality-guided-init idea (per thread 13's closing note — not
-another regression-estimator variant on the same task), or (b) move on to the next
-untouched item in the priority table — optimal-control integrators (priority 4),
-Fisher/K-FAC preconditioning (priority 5), PAC-Bayes/flatness (priority 6) — revisiting the
-two deferred threads only once their blocking issues are resolved on paper. Not yet decided
-which.
+**Immediate next step:** a full-portfolio review (2026-07-07, independent code/design
+meta-review plus four literature reviews) is now on record in
+`docs/reviews/2026-07-07-portfolio-review.md`. It corrects several recorded framings (see
+dated notes in threads 6/10/11/13), gives literature verdicts on the untouched threads
+(4: genuinely open, run amended; 8: likely falsified as stated, salvage with controls; 7:
+strongly predicted false as written, only the symmetry-corrected variant is worth a fresh
+thread), and ends with a ranked next-step list. Top of that ranking, all CPU-cheap and each
+closing or correcting something already on the record: (1) a muP coordinate check to
+unblock thread 6, (2) a finite-width fluctuation test (Hanin-Nica) that turns the
+criticality sub-line's residual chaotic-phase anomaly into a fresh falsifiable prediction,
+(3) the generous-budget gate check thread 11's review specified but never ran; then (4) a
+new recall-mechanism thread (two-layer composition / short-conv / DeltaNet-style state)
+carrying thread 9's still-deferred prediction B. Each item needs its own pre-registered
+thread doc before code, per `docs/methodology.md`. None started yet.

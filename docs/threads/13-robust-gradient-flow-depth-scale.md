@@ -211,3 +211,34 @@ closer to the theory's fixed point (avoiding the transient/turnover regime this 
 near-orthogonal one-hot inputs sit in), or per-layer rather than per-model gradient
 tracking — and its own fresh thread doc, matching how the gate-family sub-line closed after
 three attempts (`docs/threads/11-dual-gate-spectral-recurrence.md`).
+
+**Post-hoc note, 2026-07-07 (full-portfolio review, `docs/reviews/
+2026-07-07-portfolio-review.md`): two additions, verdict unchanged.**
+
+1. **Process disclosure this doc should have carried from the start:** thread 12's
+   pre-registration explicitly said that if it failed, the result "should be logged as
+   falsified **without a further immediate follow-up in this sub-line**" — and this thread
+   is exactly such a follow-up. The gate-family three-attempt precedent invoked above
+   doesn't erase that this thread's existence violated thread 12's own pre-registered
+   stopping rule. Recording the deviation honestly rather than leaving it implicit; future
+   stopping rules should be followed, or amended with a dated note *before* a follow-up is
+   designed. (This thread was itself properly pre-registered, and its result — the shape
+   criterion flipping to a clean pass under a robust estimator — was informative; the
+   deviation is about process, not about this thread's internal validity.)
+2. **The residual chaotic-phase "systematic bias" now has two candidate explanations, both
+   more substantive than the measurement-quality framing above.** (a) A literature review
+   found finite-width theory *predicts* this failure mode: Hanin & Nica (arXiv:1812.05994)
+   prove `log||grad||` is asymptotically Gaussian with variance growing ∝ depth/width;
+   Roberts-Yaida-Hanin (arXiv:2106.10165) make `r = depth/width` the expansion parameter,
+   controlled only for `r << 1` — this grid reaches `r ~ 1.4` at depth 362/width 256. Under
+   a log-normal with depth-growing variance, this thread's median-based slope *must*
+   undershoot theory's `E[grad^2]`-based slope by half the log-variance growth rate —
+   consistent with the 2.7-4x undershoot and possibly the 2.05 sign flip. (b) An
+   independent code/design meta-review pointed out that the per-depth *median* turning over
+   non-monotonically cannot be explained by heavy tails at all (medians are tail-robust) —
+   a genuine change in central tendency, e.g. tanh saturation accumulating along individual
+   chaotic trajectories, which the fixed-point-linearized asymptotic `xi` simply doesn't
+   describe at large finite depth. The two explanations are distinguishable by the
+   structurally different measurements this doc already calls for — per-layer gradient
+   tracking plus explicit `Var[log grad]`-vs-depth (and its width scaling) — sketched with
+   a pre-registrable quantitative form as the review doc's ideas I2/I5.

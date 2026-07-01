@@ -183,3 +183,33 @@ further support "no gradient signal exists here" over "just needed more steps." 
 any real next attempt on recall at this depth belongs to a structurally different mechanism
 (e.g. explicit key-addressed memory) and its own fresh thread doc — not another variant of
 "gate on top of thread 1's spectral core."
+
+**Correction, 2026-07-07 (full-portfolio review, `docs/reviews/
+2026-07-07-portfolio-review.md`): the closing framing "optimization/learnability limit,
+not a capacity or architecture one" needs two qualifications.** The verdict (falsified as
+pre-registered; sub-line closed) is unchanged.
+
+1. **The "learnability limit" clause is not yet earned.** The generous-budget check the
+   paragraph above describes (10k+ steps / repeated-batch) was specified but never run, so
+   what's actually established is: not capacity, not init, and no signal *within 2000
+   online fresh-batch steps*. "No discoverable gradient signal" (period) remains untested —
+   see the review doc's idea I4 for the cheap experiment that would settle it.
+2. **The "not architecture" clause is likely wrong per the literature.** A dedicated
+   literature review found convergent evidence that a *single* scalar-gated linear
+   recurrence — this exact family — is a known-insufficient architecture class for
+   multi-pair recall regardless of optimization: Zoology (arXiv:2312.04927) proves
+   gated-conv/gated-recurrence ("BaseConv") models need state growing with sequence length
+   for MQAR-type recall, and every working small-recurrent solution adds one of three
+   primitives this construction lacks — a shift/short-conv operator (H3, arXiv:2212.14052;
+   "Convolution Augments Attention," arXiv:2407.05591), two-layer composition (induction
+   heads, arXiv:2209.11895; formal 1-vs-2-layer separation, arXiv:2508.07208), or explicit
+   outer-product key-value state (DeltaNet, arXiv:2406.06484). The observed
+   gate-never-moves symptom is also the classic, named gate-saturation pathology (Tallec &
+   Ollivier chrono-init, arXiv:1804.11188; Gu et al., arXiv:1910.09890) — so the failure is
+   plausibly architectural *and* optimizational at once, a false dichotomy in the original
+   framing. The capacity half of the claim, by contrast, gains outside support:
+   hidden=64/vocab=512/n_pairs=8 is comfortably slack against Zoology's information-
+   theoretic lower bound, so "not capacity" now rests on published theory, not only the
+   local hidden-size ablation. The structurally-different-mechanism follow-up this doc
+   calls for is sketched as the review doc's idea I3 (two-layer composition / short-conv /
+   DeltaNet-style state, carrying thread 9's still-deferred prediction B).

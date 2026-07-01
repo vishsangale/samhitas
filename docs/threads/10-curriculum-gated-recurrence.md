@@ -132,6 +132,19 @@ exactly), same LR grid and 5 seeds, evaluated on held-out n_pairs=8 batches.
   training, at this specific stage allocation, did not meaningfully recover depth-8
   performance.
 
+**Correction, 2026-07-07 (full-portfolio review, `docs/reviews/
+2026-07-07-portfolio-review.md`): the "same total compute" framing above is wrong — this
+was matched *step count*, not matched compute.** Per-step cost of the recurrence scales
+with `seq_len = 2*n_pairs+1`, so the curriculum's stages cost (in seq-len-weighted steps)
+`700*5 + 700*9 + 600*17 = 20,000` vs. the direct-training control's `2000*17 = 34,000` —
+the curriculum arm used **~59% of the control's actual compute**. This does not change the
+verdict (the curriculum received *less* compute and still failed, so the falsification
+stands, if anything more strongly), but "failed at matched compute" should not be quoted
+from this doc: a genuinely FLOP-matched curriculum (~3,400 total steps at this stage mix)
+was never tested, and per `docs/methodology.md`'s own compute-accounting rule, step count
+alone was never a valid matching axis. Any future schedule-comparison thread should match
+on seq-len-weighted steps (or measured wall-clock) explicitly.
+
 This is a more informative negative result than a plain "didn't work," though: the review
 that motivated this thread found the *same* gated architecture reaches 0.32 accuracy when
 trained and evaluated at n_pairs=2 alone. Here, the curriculum spends its first two stages

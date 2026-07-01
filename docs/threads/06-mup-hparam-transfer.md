@@ -157,6 +157,10 @@ the pre-registered 16x (30-60x+, since 8x already looks insufficient) to give mu
 shot at its asymptotic regime — but extend it to find out whether muP starts winning, not
 as a reason to discount the current adverse reading. The step-budget/threshold setup
 (`target_train_loss` + `max_steps`) is also a real confounder the first draft of this note
+didn't flag: which configs count as "converged" is sensitive to one arbitrary cutoff and
+step ceiling, so the real run should report steps-to-target across several thresholds (or
+fit the loss curve) rather than hinge everything on one target value. LR grid resolution
+was a secondary concern, not the binding one.
 
 **Post-hoc note, 2026-07-03 (`thread06_mup_widerange.py`, k up to 32x, dual thresholds,
 still CPU/toy scale, last smoke-test iteration for now):** extending to widths
@@ -179,7 +183,18 @@ what real muP validation actually needs — thousands of steps, a harder task, m
 widths) can only be answered by the pre-registered GPU run, not by further CPU tuning.
 Moving on to thread 1 (the first thread that's an actual candidate architecture, not a
 methodology check) rather than continuing to refine this smoke test.
-didn't flag: which configs count as "converged" is sensitive to one arbitrary cutoff and
-step ceiling, so the real run should report steps-to-target across several thresholds (or
-fit the loss curve) rather than hinge everything on one target value. LR grid resolution
-was a secondary concern, not the binding one.
+
+**Post-hoc note, 2026-07-07 (full-portfolio review, `docs/reviews/
+2026-07-07-portfolio-review.md`):** two updates from the review, no change to the
+parked/inconclusive verdict. (1) A doc-splice error was fixed above — the 2026-07-03 note
+had been inserted mid-sentence into the 2026-07-02 note's final paragraph; the orphaned
+fragment is now restored to its sentence. Nothing substantive changed. (2) An independent
+static code review verified `models/mlp.py`'s muP Adam multiplier table is correct, ruling
+out the simplest implementation-bug explanation for the adverse smoke reads; a literature
+review found the observed failure direction essentially unreported as a genuine muP
+failure mode, with the leading remaining suspects being the task itself (modular
+arithmetic's grokking dynamics are weight-decay-governed, not width-governed; no published
+muP validation uses an algorithmic task) and subtler embedding/readout-layer or
+weight-decay handling. The cheap decisive next step, before any GPU run: a standard muP
+*coordinate check* (per-layer-type activation scale vs. width over a few steps) plus the
+"wider is always better" check — see the review doc's idea I1.
