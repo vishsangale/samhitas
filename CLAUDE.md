@@ -65,8 +65,9 @@ doc after the fact to match whatever the code happened to do.
 
 As of 2026-07-05: thread 6 (muP transfer) is parked, inconclusive at toy scale. Thread 1
 (stability-constrained recurrence) is closed for now with clean small-scale support on all
-three of its original measurements. Decided next step, not yet started: a new thread (09)
-extending thread 1's spectrally-constrained linear core with a minimal input-dependent
-gate (Mamba-style selective SSM), testing whether recall becomes solvable and whether the
-predictable-training-range property survives adding that nonlinearity. Needs its own
-thread doc before any code.
+three of its original measurements. Thread 9 (gated spectral recurrence, extends thread 1)
+is pre-registered — `docs/threads/09-gated-spectral-recurrence.md` has two falsifiable
+predictions (recall becomes solvable via a minimal input-dependent retention gate; the
+gated failure boundary stays within 2x of ungated orthogonal at matched eps) — but no
+model/script code exists yet. Next action: implement `GatedLinearRecurrentBlock`, smoke-test
+prediction A's training loop timing before committing to the full sweep size.

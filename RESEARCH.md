@@ -147,6 +147,7 @@ preserved in this repo's history; the concrete changes it produced:
 | 4 | [Optimal-control integrators for depth](docs/threads/04-optimal-control-integrators.md) | Pontryagin maximum principle, ODE view of ResNets, numerical integrator theory | On a synthetic smooth-target task (small-step regime), required depth drops with integrator order per truncation-error theory, FLOP-honest | Low — still dense matmul stacks; likely falsified outside the constructed small-step regime |
 | 5 | [Fisher/K-FAC-preconditioned optimization](docs/threads/08-natural-gradient-preconditioning.md) | Information geometry, natural gradient, K-FAC | Fisher condition number near init predicts steps-to-target-loss ranking across architectures; preconditioning benefit scales with how ill-conditioned the architecture is | Low — general optimization-geometry statement |
 | 6 | [PAC-Bayes / flatness as design target](docs/threads/07-pac-bayes-flatness.md) | PAC-Bayes bounds, loss-landscape flatness | A cheap flatness proxy ranks architecturally distinct models (at matched train loss) in the same order as their actual test gap | Low — landscape-geometry measurement, not a layer |
+| 2b | [Gated spectral recurrence](docs/threads/09-gated-spectral-recurrence.md) (extends thread 1) | Control theory + linear time-varying systems | A minimal input-dependent retention gate on thread 1's spectrally-constrained core makes associative recall solvable (>=0.30 mean acc vs. chance) while the gated failure boundary stays within 2x of the ungated one at matched eps | Low — same class of update Mamba already runs efficiently |
 
 **Deferred (blocked on unresolved issues, see thread docs for what's needed before building):**
 
@@ -195,17 +196,19 @@ nonlinear comparison, which conflicts with this thread's own linear-recurrence
 pre-registration), so task accuracy is dropped as a metric here. Full history in
 `docs/threads/01-stability-constrained-recurrence.md`'s dated addenda.
 
-**Decided next step, not yet started:** extend thread 1's finding one level up, as its own
-new hypothesis/thread rather than an amendment to thread 1 (thread 1's own pre-registered
-scope is explicitly linear-only). The idea: keep the spectrally-constrained linear
-recurrence core from `experiments/models/linear_recurrence.py` (it has the predictable
-gradient-flow property), and add a *minimal* input-dependent gate on top (closer to how
-Mamba's selective SSM actually works) — just enough nonlinearity to make content-based
-routing possible, tested on whether (a) the associative recall task becomes solvable and
-(b) the predictable-training-range property survives the addition. This needs its own
-thread doc (falsifiable prediction, pre-registered pass/fail band) written *before*
-implementation, per `docs/methodology.md`'s pre-registration rule — next thread number is
-09. Not started as of this commit.
+**Thread 9 (gated spectral recurrence, extends thread 1): pre-registered, not yet
+implemented.** `docs/threads/09-gated-spectral-recurrence.md` now exists with two required
+falsifiable predictions: (A) a minimal input-dependent retention gate on top of thread 1's
+`orthogonal` core (`h_t = (1-g_t)*(A h_{t-1}) + g_t*(B x_t)`, `g_t = sigmoid(W_g x_t)`)
+reaches >=0.30 mean held-out accuracy on the same associative-recall task thread 1 proved
+unlearnable for a linear model, at eps=0.1, 2000 steps, >=5 seeds, matched LR-sweep budget
+against an ungated control that should stay at chance; (B) the gated model's
+healthy/unhealthy sequence-length boundary (via `gradient_norm_ratio`) stays within 2x of
+the ungated orthogonal boundary at the same nominal eps, across thread 1's full eps list.
+Both must hold for "supported so far" — deliberately in tension, since a gate strong enough
+to enable recall could plausibly be strong enough to break predictability. No model/script
+code written yet; next step is implementing `GatedLinearRecurrentBlock` and smoke-testing
+prediction A's training loop before the full 5-seed x 5-LR sweep.
 
 Other threads (2, 4, 5/8 per the priority table) are untouched — still just written up in
 `docs/threads/`, no code.
