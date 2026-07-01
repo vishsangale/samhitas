@@ -36,7 +36,11 @@ VOCAB = 24
 HIDDEN = 64
 BATCH = 32
 N_PAIRS_LIST = [8, 16, 32, 64, 128]  # seq_len = 2n+1: 17, 33, 65, 129, 257
-EPS_LIST = [0.5, 0.1, 0.02]
+# Added 0.005 (spectral radius 0.995): v1 only went down to eps=0.02, whose constrained
+# variants topped out well short of where the "free" baseline happened to reach (129) --
+# too coarse to tell whether a constrained config can reach that range too, and if so,
+# whether it does so without free's confirmed explosion risk just beyond it.
+EPS_LIST = [0.5, 0.1, 0.02, 0.005]
 SEEDS = [0, 1, 2]
 TRAIN_STEPS = 60
 TRAIN_LR = 1e-3
@@ -76,8 +80,12 @@ def run_one(mode, eps, n_pairs, seed):
         "mode": mode, "eps": eps, "n_pairs": n_pairs,
         "seq_len": recall.seq_len_for(n_pairs), "seed": seed,
         "ratio_at_init": at_init["ratio_first_over_last"],
+        "failure_mode_at_init": at_init["failure_mode"],
         "healthy_at_init": at_init["healthy"],
+        "first_grad_norm_after_train": after_train["first_grad_norm"],
+        "last_grad_norm_after_train": after_train["last_grad_norm"],
         "ratio_after_train": after_train["ratio_first_over_last"],
+        "failure_mode_after_train": after_train["failure_mode"],
         "healthy_after_train": after_train["healthy"],
         "eval_acc": eval_acc,
     }
@@ -98,11 +106,11 @@ def main():
                 print(f"[{done}/{total}] mode={mode} eps={eps} seq_len={r['seq_len']} "
                       f"seed={seed} ratio_init={r['ratio_at_init']:.3g} "
                       f"ratio_trained={r['ratio_after_train']:.3g} "
-                      f"healthy_trained={r['healthy_after_train']} acc={r['eval_acc']:.2f}")
+                      f"mode_trained={r['failure_mode_after_train']} acc={r['eval_acc']:.2f}")
 
     (RUN_DIR / "results.json").write_text(json.dumps(results, indent=2))
 
-    print("\n--- max healthy (post-training) seq_len per (mode, eps) ---")
+    print("\n--- max healthy (post-training) seq_len per (mode, eps), and how it fails past that ---")
     by_config = defaultdict(list)
     for r in results:
         by_config[(r["mode"], r["eps"])].append(r)
@@ -113,8 +121,16 @@ def main():
         if max_healthy is not None:
             accs = [r["eval_acc"] for r in rs if r["seq_len"] == max_healthy]
             mean_acc_at_max = sum(accs) / len(accs)
+        # First seq_len beyond max_healthy (or the shortest tested, if nothing was
+        # healthy) and how it actually failed -- vanished gracefully vs. exploded.
+        longer = sorted(set(r["seq_len"] for r in rs if max_healthy is None or r["seq_len"] > max_healthy))
+        failure_modes_next = None
+        if longer:
+            next_len = longer[0]
+            modes_at_next = [r["failure_mode_after_train"] for r in rs if r["seq_len"] == next_len]
+            failure_modes_next = f"at seq_len={next_len}: {modes_at_next}"
         print(f"mode={mode} eps={eps}: max_healthy_seq_len={max_healthy} "
-              f"(acc there={mean_acc_at_max})")
+              f"(acc there={mean_acc_at_max}) | first failure {failure_modes_next}")
 
 
 if __name__ == "__main__":
