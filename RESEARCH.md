@@ -162,21 +162,53 @@ preserved in this repo's history; the concrete changes it produced:
 
 ## 7. Shared experiment harness (see `experiments/README.md`)
 
-All threads should be testable against a common small set of diagnostic tasks so results
-are comparable: synthetic algorithmic tasks (associative recall, selective copy, modular
-arithmetic — cheap and known to separate architectures, per the S4/Mamba/RWKV line of
-work), a tiny char/token-level LM task (Shakespeare / TinyStories scale), and a small
-vision classification task (CIFAR-10 or a subset). No code committed yet — harness lands
-once this revised plan and thread docs get a review pass.
+Harness code now exists and is being built incrementally per-thread rather than all at
+once (tasks, models, and harness pieces for threads 1 and 6 are built; see
+`experiments/README.md` for the current file-by-file inventory). Diagnostic tasks in use
+so far: modular arithmetic (thread 6) and associative recall (thread 1, though its
+accuracy metric turned out to be structurally inert for a linear model — see thread 1's
+status below). Still not built: tiny char/token-level LM, small vision classification,
+the generalized `scaling_sweep.py` and `curvature.py` harness pieces threads 2/4/7/8 will
+need.
 
-## 8. Immediate next steps
+## 8. Status as of 2026-07-05 and immediate next step
 
-1. Build the shared harness in `experiments/`, including the matched-FLOPs+wall-clock
-   accounting and multi-seed sweep infrastructure the revised methodology requires.
-2. Run **Thread 6** first (muP-style transfer, baseline layer only, to validate the
-   protocol against known results) — it's the methodology's own validity check.
-3. Implement **Thread 1**'s structured-recurrence layer, which doubles as Thread 6's first
-   novel-layer test case, and run Thread 1's falsification experiment.
+**Thread 6 (muP-style hyperparameter transfer): parked, inconclusive at toy scale.** Two
+CPU runs (8x and 32x width ranges) both ran *against* the prediction (muP's raw-LR
+transfer drifted more than a naive baseline's), but both runs have real, acknowledged
+scale/task limitations (toy modular-arithmetic task, LR grid resolution, width range far
+below where muP's advantage is normally demonstrated). Not falsified, not supported —
+genuinely unresolved pending a real run on a harder task (tiny LM) at proper scale. See
+`docs/threads/06-mup-hparam-transfer.md`'s dated addenda for the full history.
+
+**Thread 1 (stability-constrained recurrence): closed for now, clean small-scale support.**
+All three of its originally-scoped measurements came back with mutually consistent,
+positive results: the linear-regime scaling law was confirmed to closed-form precision
+(predicted failure sequence-length matched measured within a few percent, at two very
+different scales); the cross-parameterization claim held (orthogonal and diag_lowrank
+constructions agree within the pre-registered factor-of-2 bound); and the
+free-vs-constrained predictability asymmetry was well-supported (unconstrained recurrence
+fails unpredictably, sometimes catastrophically; constrained variants fail the same way
+every time). One scope limitation found and left alone, not fixed: the associative-recall
+task is unlearnable by a strictly linear model (proved by construction — recall needs a
+nonlinear comparison, which conflicts with this thread's own linear-recurrence
+pre-registration), so task accuracy is dropped as a metric here. Full history in
+`docs/threads/01-stability-constrained-recurrence.md`'s dated addenda.
+
+**Decided next step, not yet started:** extend thread 1's finding one level up, as its own
+new hypothesis/thread rather than an amendment to thread 1 (thread 1's own pre-registered
+scope is explicitly linear-only). The idea: keep the spectrally-constrained linear
+recurrence core from `experiments/models/linear_recurrence.py` (it has the predictable
+gradient-flow property), and add a *minimal* input-dependent gate on top (closer to how
+Mamba's selective SSM actually works) — just enough nonlinearity to make content-based
+routing possible, tested on whether (a) the associative recall task becomes solvable and
+(b) the predictable-training-range property survives the addition. This needs its own
+thread doc (falsifiable prediction, pre-registered pass/fail band) written *before*
+implementation, per `docs/methodology.md`'s pre-registration rule — next thread number is
+09. Not started as of this commit.
+
+Other threads (2, 4, 5/8 per the priority table) are untouched — still just written up in
+`docs/threads/`, no code.
 4. Proceed through the rest of the priority table in order — criticality-guided init
    (priority 3), optimal-control integrators (priority 4), Fisher/K-FAC preconditioning
    (priority 5), PAC-Bayes/flatness (priority 6) — revisiting the two deferred threads
