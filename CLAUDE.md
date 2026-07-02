@@ -28,11 +28,14 @@ and environment notes established during development, not a restatement of the p
   is also the GitHub default branch. History: the original harness-assigned branch
   (`claude/neural-arch-math-foundations-ljiv0s`) was renamed to `dev` (2026-07-01
   sessions); on 2026-07-08 a `main` branch was briefly created from `dev`'s head on a
-  misread request and deleted the same session when the user clarified `dev` is
-  canonical — there is deliberately no `main`; if a stray `main` ref ever reappears,
-  `dev` is the one that counts. Stale remote refs safe to delete whenever the user
-  wants: `claude/review-ideas-results-pju2sq` (fully contained in `dev`'s history), any
-  `claude/*` session branches at or behind `dev`.
+  misread request; the user clarified `dev` is canonical, but deleting the remote `main`
+  from this sandbox failed (the environment's git proxy returns 403 on branch deletion),
+  so the stray ref remains — keep it fast-forwarded with `dev` when pushing so it never
+  carries a stale story, and the user can delete it for real from the GitHub UI
+  (branches page) or from their own machine (`git push origin --delete main`) whenever
+  convenient. `dev` is the one that counts. Same story for other stale remote refs, safe
+  to delete whenever: `claude/review-ideas-results-pju2sq` (fully contained in `dev`'s
+  history), any `claude/*` session branches at or behind `dev`.
 - Commit each validated increment separately (fix → smoke-test → commit; don't batch
   several days of work into one diff). Write commit messages that explain *why*, matching
   the detail level already in `git log` — these commits are also the project's lab notebook.
