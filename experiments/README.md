@@ -20,6 +20,9 @@ experiments/
     gated_linear_recurrence.py  # thread 9: single shared retention gate -- built
     dual_gate_recurrence.py     # thread 11: independent read/write gates -- built
     deep_mlp.py          # thread 2: unnormalized tanh MLP, configurable init variance -- built
+    shortconv_gated_recurrence.py  # thread 17 arm (b): causal conv + gated recurrence -- built
+    two_layer_gated_recurrence.py  # thread 17 arm (a): two stacked gated blocks -- built
+    deltanet_recurrence.py         # thread 17 arm (c): delta-rule matrix state -- built
   harness/
     flops.py            # analytic FLOP counting (6*fan_in*fan_out/sample/layer) -- built
     train.py             # train_one(): single (param, width, lr, seed) run -- built
@@ -44,6 +47,11 @@ experiments/
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
+    models/tiny_attention.py   # thread 18 (decided next step): 2-layer attention positive
+                               # control for the recall protocol -- pre-registration doc
+                               # (incl. pre-run design review, methodology v2) comes first
+    tasks/char_lm.py           # thread 6 real-run prep (decided next step, parallel
+                               # stream) + the packaged GPU-handoff run script
     tasks/convdist_task.py (deferred thread 3), symmetry_gen.py (deferred thread 5)
     harness/scaling_sweep.py   # 4-6 point width/depth/data sweep + trend fit
     harness/curvature.py       # Fisher/K-FAC condition number + flatness proxy (threads 7, 8)
@@ -408,6 +416,12 @@ only runs on an A-pass, and no arm passed). Full account in
 - Every thread's numeric prediction and pass/fail band must be committed to the thread doc
   *before* `harness/train.py` is pointed at it for that thread — see "Pre-registration" in
   `docs/methodology.md`.
+- **Amendments v2 (2026-07-08)** add six further gates for every *new* thread doc before
+  its experiment may run: literature screen with kill rule, regime-validity statement,
+  noise-floor pilot before bands freeze, positive-control arm for capability claims,
+  stated prior p(pass) + calibration ledger (RESEARCH.md section 8), and an independent
+  *pre-run* design review. See `docs/methodology.md`'s amendments section and
+  `docs/reviews/2026-07-08-program-regroup.md` for the evidence behind each.
 
 ## Diagnostic tasks (shared across threads)
 
@@ -442,7 +456,17 @@ gate does move substantially given more budget, just toward a copy shortcut, not
 Rank-4 (recall-mechanism ladder, thread 17) is done -- all three arms (composition,
 short-conv, DeltaNet-style matrix state) falsified prediction A, so thread 9's deferred
 prediction B stays formally untested. All four ranked items from the portfolio review are
-now executed. No item is currently queued -- next move is either a fresh portfolio regroup
-or a single specific pre-registered follow-up (e.g. a properly-configured arm (c) variant
-combining its named fixes with a learnability aid), not yet decided. See `RESEARCH.md`
-section 8 for the full status.
+now executed.
+
+A program-level regroup (`docs/reviews/2026-07-08-program-regroup.md`, independently
+reviewed and reconciled) then diagnosed *why* the verdict stream is nearly all
+falsifications -- mostly apparatus miscalibration (out-of-regime bands, missing controls,
+literature-pre-answered questions), not the mathematics -- and adopted methodology
+amendments v2 plus a decided two-stream next step: **(1) thread 18, recall-protocol
+validation** (2-layer attention positive control with an interpretability ladder --
+attention-centered LR grid, positional info, `n_pairs=2` and extended-budget arms; not a
+gate-family reopening) and **(2) thread 6 real-run prep in parallel** (tiny char-LM task
++ packaged GPU handoff with bands frozen before handoff, execution on the user's
+hardware). Both pre-registrations must clear all six v2 gates, including the new pre-run
+design review, before any code. After those: thread 4 (amended). See `RESEARCH.md`
+section 8 for the full status and the calibration ledger.
