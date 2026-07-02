@@ -478,10 +478,37 @@ the pre-registration, since it only runs on an A-pass. See
 `docs/threads/17-recall-mechanism-ladder.md`'s dated addenda for the full account of all
 three arms.
 
-**Immediate next step:** the portfolio review's ranked list (ranks 1-4, ideas I1/I2/I4/I3)
-is now fully executed. No further item is currently queued — the next move is either (a) a
-fresh full-portfolio regroup (matching this repo's established pattern after a batch of
-falsifications, per the 2026-07-07 review's own precedent) to re-rank what's left (threads
-4, 6's real run, 8, and any freshly-motivated follow-up like a properly-configured arm (c)
-variant or a curriculum-plus-fixed-key-value design), or (b) picking a single specific next
-item if one is judged clearly highest-value without a full regroup. Not yet decided.
+**Program-level regroup, 2026-07-08 (`docs/reviews/2026-07-08-program-regroup.md`):**
+prompted by the user's direct question ("all negative results — what is wrong with the
+setup?"), a full audit of *why* the verdict stream is nearly all falsifications. Headline
+finding: of 13 negative-reading verdicts, 7 were the apparatus falsifying its own bars
+(out-of-regime bands, underpowered tests, mis-specified thresholds — threads 2, 12, 13,
+14, 15A, 15B, 16), 2 were construction confounds (17a-broad, 17b), and 5 were real kills —
+3 literature-pre-answered (the gate family, 9/10/11) and 2 genuinely open (17a-narrow,
+17c) but confined to a protocol never validated as learnable by anything. The code
+itself is clean (no falsification was ever traced to a harness bug); the defects are in
+experiment design. Root causes and the full argument are in the regroup doc. Adopted with
+it: **methodology amendments v2** (`docs/methodology.md`: literature screen with kill
+rule, regime-validity statement, noise-floor pilot, mandatory positive-control arm for
+capability claims, stated prior pass-probability per prediction) and a reporting rule
+separating "verdict" from "net knowledge."
+
+**Immediate next step (decided):** (1) **thread 18 — recall-protocol validation**: a
+minimal 2-layer attention model (the literature's known-sufficient reference) under the
+exact existing recall protocol, to determine whether the protocol is learnable at all at
+this scale/budget — retroactively supplying the positive control the seven-experiment
+recall cluster never had (not a gate-family reopening; thread 11/17 closure rules
+untouched). Its pre-registration doc, written to the amended methodology, is the next
+artifact. (2) Then **thread 6's real run** (the keystone: build the tiny char-LM task,
+pin the protocol, execute at pre-registered scale on the user's GPU hardware) — the
+program's "falsify small, trust the trend" premise currently rests on adverse toy-scale
+evidence and no real-scale evidence. (3) Thread 4 (amended) is the designated next
+new-science thread after those. Threads 7-as-written/8/3/5 stay dead/deferred/blocked per
+the regroup's C4.
+
+**Calibration ledger** (methodology amendment v2.5; entries begin with thread 18 — past
+threads pre-registered no prior pass-probabilities, so they are not retro-scored):
+
+| Thread / prediction | Stated p(pass) | Outcome |
+|---|---|---|
+| — | — | — |

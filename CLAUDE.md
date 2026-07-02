@@ -364,13 +364,29 @@ the 2026-07-07 portfolio review (I1 muP coordinate check, I2 finite-width fluctu
 I4 generous-budget gate check, I3 recall-mechanism ladder) — every rank-1-through-4 item is
 now executed.
 
-**Next step: not yet decided.** No further item is currently queued from the portfolio
-review's ranked list. The natural options, per this repo's own established pattern (a fresh
-regroup after a batch of falsifications, matching the 2026-07-07 portfolio review's own
-precedent): (a) a fresh full-portfolio regroup incorporating everything learned since
-2026-07-07 (four more falsified/clarified threads, several corrected framings) to re-rank
-what's left (thread 4, thread 6's still-not-started real GPU run, thread 8, and any
-freshly-motivated follow-up like a properly-configured arm (c) variant combining its named
-fixes with a learnability aid, or a curriculum-plus-fixed-key-value design); or (b) picking
-a single specific next item directly if one is judged clearly highest-value without a full
-regroup. Decide at the start of the next session.
+As of 2026-07-08 (session label; next session after the above): the user asked directly
+why the program produces "all negative results" and whether the setup is broken. Answered
+with a **program-level regroup** (`docs/reviews/2026-07-08-program-regroup.md` — option
+(a) from the previous paragraph's menu, aimed at the program design layer rather than
+thread-level correctness, which the 2026-07-07 review already covered). Headline: the
+code/harness layer is clean and the discipline is worth keeping, but of 13
+negative-reading verdicts, 7 were the apparatus falsifying its own bars (out-of-regime
+bands, underpowered tests, mis-set thresholds), 2 were construction confounds, and of the
+5 real kills, 3 (the gate family) were literature-pre-answered and the 2 genuinely open
+ones sat on a task protocol never validated as learnable by anything — i.e. the program
+has mostly been measuring its own bar-miscalibration and re-deriving published results, while
+its genuinely novel/decisive items (thread 6's real-scale run, thread 4, prediction B)
+never ran. Adopted with it: **methodology amendments v2** (`docs/methodology.md`) —
+literature screen with kill rule, regime-validity statement, noise-floor pilot before
+bands freeze, mandatory positive-control arm for capability claims, stated prior
+pass-probability + calibration ledger (ledger lives in RESEARCH.md section 8).
+
+**Next step (decided, not yet started): thread 18 — recall-protocol validation.** A
+minimal 2-layer attention model (the literature's known-sufficient reference for this
+task) under the exact existing recall protocol, to establish whether that protocol is
+learnable at all at this scale/budget — the positive control the seven-experiment recall
+cluster never had. Not a gate-family reopening (no gated-recurrence variant; thread 11/17
+closure rules untouched). Its pre-registration doc must satisfy the amended methodology
+(including the noise-floor pilot) before any code. After it: thread 6's real run (build
+tiny char-LM task, pin protocol, execute on the user's GPU), then thread 4 (amended) as
+the next new-science thread. See the regroup doc's section 4 for the full decision set.

@@ -105,6 +105,46 @@ scaling the experiment up. Scaling checks (step 5) get a slightly larger but sti
 budget (a handful of small runs, not one big run) — the point is a trend line, not a
 record.
 
+## Amendments v2 (2026-07-08, adopted by the program regroup — see
+`docs/reviews/2026-07-08-program-regroup.md` for the evidence behind each)
+
+Five additional pre-registration requirements for every thread doc written after this
+date. None changes any existing thread's recorded prediction or verdict (per the
+pre-registration rule above, history is never edited); they change what a *new* thread doc
+must contain before its experiment may run.
+
+1. **Literature screen, with a kill rule.** A "prior art check" section written before
+   the bands are set: what does the closest published work say about this exact claim? If
+   the literature already firmly expects the pre-registered outcome (in either direction),
+   the claim is low-information as specified — reshape it toward what is genuinely open,
+   or drop it. (This is the 2026-07-07 portfolio review's ranking criterion — thread 3's
+   deferral logic — promoted from review-time to design-time; it would have caught the
+   gate family's collision with Zoology's bound and threads 7/8's adverse priors before
+   any code was written.)
+2. **Regime-validity statement.** State the theory's own validity conditions (width,
+   depth, `depth/width`, asymptotic step-count assumptions, ...) next to the experiment's
+   actual planned values. Where the experiment cannot reach the theory's valid regime,
+   only sign/ordering/shape predictions may be pre-registered — no absolute quantitative
+   bands imported from out-of-regime formulas (threads 13/15's failure mode).
+3. **Noise-floor pilot before bands freeze.** Run the planned estimator on null/synthetic
+   or pilot data first to establish the resolvable effect size at the planned seed count.
+   A pre-registered band narrower than the measured noise floor is inadmissible (thread
+   15B's failure mode). The pilot is exploratory by definition and must not touch the
+   treatment comparison itself.
+4. **Positive-control arm for capability claims.** Every "mechanism X enables capability
+   Y" experiment includes an arm known — from the literature or a prior thread — to
+   achieve Y under the same harness, task, and budget. If no such arm exists yet, the
+   thread is blocked on validating the protocol itself first (a protocol-validation run is
+   its own, separately pre-registered experiment). Measurement threads continue the
+   existing practice (threads 14/15 already carried controls; the architecture threads
+   never did, which is why seven recall experiments could not distinguish "mechanism
+   insufficient" from "protocol unlearnable at this budget").
+5. **Stated prior pass-probability + calibration ledger.** Each pre-registered prediction
+   carries a one-line "expected p(pass) ~ X, because ..." at registration time, and the
+   outcome is appended to a running ledger in `RESEARCH.md` section 8. A ledger pinned at
+   0% (or 100%) means band-generation is miscalibrated — now a monitorable failure mode
+   rather than a felt one.
+
 ## What counts as a "diagnostic task"
 
 Prefer tasks known to mechanistically separate architectures at small scale rather than
