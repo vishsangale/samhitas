@@ -132,5 +132,95 @@ novelty here beyond applying it to this repo's own specific recorded gap.
 
 ## Status
 
-Not yet run. Pre-registered 2026-07-07 (session-label date, per this repo's now-standard
-doc-date-vs-commit-date convention).
+Run 2026-07-07 (session-label date). **Both arms literally PASS their pre-registered
+bars, but an independent Opus review found the honest headline is closer to "falsified in
+spirit" than "budget artifact confirmed."** See the dated post-hoc note below.
+
+**Post-hoc note, 2026-07-07 (Opus review):** Full grid (2 arms x 5 seeds x 12,000 steps)
+ran in ~1003s CPU (~17 min). Raw result: **Arm A** mean held-out accuracy across 5 seeds =
+**0.0316** (individual seeds 0.0195-0.0371, genuinely flat, no stray high-accuracy seed) --
+statistically indistinguishable from thread 11's already-collected 2000-step control
+(0.032) despite 6x more compute, and far below the 0.30 "solved recall" bar. But the write
+gate's mean value moved from 0.0211 (init) to 0.0993 (step 12000), a **4.70x** increase,
+clearing the pre-registered `>=2.0x` gate-growth clause -- so Arm A technically **PASSES**
+via the OR criterion's weaker branch. **Arm B** reached **1.0000** mean training accuracy
+on the fixed 128-example pool (near-perfect memorization), clearing its `>=0.90` bar --
+**PASSES** outright.
+
+Sent to an independent Opus review before drawing a conclusion, flagging explicitly that
+Arm A's pass came entirely from the weak gate-growth clause and asking whether "budget
+artifact, sub-line reopens" was the right headline. The review re-ran Arm A (seeds 0-1) and
+Arm B (seed 0) from scratch at the full 12,000 steps and reproduced every number to the
+digit (a concurrent reviewer's independent 3-seed re-run also matched), then added
+diagnostics the original driver didn't collect:
+
+1. **The pre-registered `>=2.0x` gate-growth clause was miscalibrated -- too permissive,
+   for a specific, checkable reason.** The init gate value (0.0211) sits at logit -3.84, deep
+   in the sigmoid's saturated tail; the 2x bar (0.0422, logit -3.12) needs only +0.72 nats of
+   logit movement to clear, while an actually-open gate (0.5) would need +3.84 nats. The
+   observed final value (0.0993, logit -2.20) is a real +1.63-nat move -- genuine directed
+   movement (`write_gate.weight`'s norm grew 2.78x, the largest of any weight matrix, vs.
+   `forget_gate.weight`'s 1.00-1.16x and `embed`'s 1.05x baseline -- not Adam diffusion) --
+   but "the gate moved 4.7x in relative terms" dramatizes a move from "deeply closed" to
+   "still quite closed," not to "open." The bar conflated "a usable gradient direction
+   exists for the write gate" with "gradient signal exists toward solving recall" -- those
+   turned out to diverge sharply here (see next point). A better-calibrated bar would have
+   used an absolute threshold (e.g. mean gate `>0.5`) rather than a relative-to-a-near-zero-
+   baseline one, or restricted "budget artifact" to the accuracy clause alone. Per this
+   repo's rule, the literal grade (Arm A passes) is not edited after the fact -- this is
+   logged as the interpretation alongside it.
+2. **What the gate is opening toward: a recency-weighted in-context-copy shortcut, not
+   partial content-addressed recall.** Per-query-position accuracy climbs near-monotonically
+   from **0.000 for the oldest pairs (query index 0-3) to 0.08-0.13 for the most recent pair
+   (index 7)** -- the fingerprint of a decaying recurrent memory where only the most
+   recently-written pair survives to readout, not flat content-addressed routing. ~78-82% of
+   predictions are tokens present in the input sequence (chance would be ~3.3%), and
+   predictions are diverse (240-350 unique tokens, no single-token collapse) -- so this is
+   learned in-context copying, not a degenerate frequency heuristic (which couldn't help
+   anyway, since values are uniform over the vocab). A naive "always output the most recent
+   value" heuristic alone scores 0.137, close to the observed idx-7 accuracy -- consistent
+   with the ~16x-chance overall accuracy being almost entirely this shortcut, not partial
+   recall of older pairs.
+3. **Arm B's memorization is a real but low bar, and doesn't support "the gate mechanism
+   specifically has usable signal for recall."** ~550 parameters per memorized example
+   (~70k total params, 128 examples) makes near-perfect fixed-set memorization close to
+   guaranteed for any model with functioning gradients -- passing it mainly rules out a
+   catastrophic dead-gradient failure, not much more. Two findings sharpen this: the
+   memorizing Arm-B model generalizes at **chance** on a fresh eval batch (0.0039, vs.
+   chance 0.00195) -- memorization and the recall *algorithm* are fully decoupled -- and
+   memorization is achieved with the write gate still mostly closed (~0.087, only 4.1x),
+   suggesting the fixed-set fitting plausibly routes through the embedding/readout lookup
+   rather than through the recurrent gating pathway doing content routing at all.
+
+**Bottom-line verdict (Opus review, adopted here): not "budget artifact confirmed, sub-line
+reopens" (reading the literal PASS this way would be exactly the kind of motivated-reasoning
+error this repo's methodology exists to catch). Closer to "falsified in spirit despite a
+literal Arm-A pass," with one genuine, specific correction to the prior record.** The
+budget-artifact reading is not supported: 6x compute bought zero held-out-accuracy
+improvement (0.0316 vs. the 0.032 control, flat across all 5 seeds, 10x below the 0.30 bar)
+-- the PASS came entirely from a bar that, on inspection, didn't measure what "budget
+artifact" needs it to measure. The core negative finding from threads 9/10/11 stands: more
+budget alone does not solve generalized multi-pair recall for this gate family at this
+depth. **One real correction is earned, though:** threads 9/10/11's phrasing that the
+write-relevant gate "barely moved" / showed "no discoverable gradient signal" is **too
+strong** and should be corrected -- given 12,000 steps there *is* a discoverable, directed
+gradient signal (the gate moves 4.7x, monotonically, across all seeds; its weight matrix is
+the most-updated in the model). The earlier "gate frozen" observation was a 2000-step
+artifact, not evidence of a literally dead gradient. But this correction does **not**
+reopen the sub-line -- if anything it strengthens the architectural-insufficiency reading
+(portfolio review section 2.2, the Zoology citation) over a pure "just needed more steps"
+reading: the pathway is optimizable, and given 6x more budget to use that optimizability,
+it still converges on a shortcut rather than solving recall, consistent with this gate
+family lacking one of the structural primitives (short-conv, two-layer composition, or
+explicit key-value state) the literature says multi-pair recall actually needs.
+
+**Action taken on the prior record:** `docs/threads/11-dual-gate-spectral-recurrence.md`'s
+"write-relevant gate value moved from ~0.021 to only ~0.025-0.026" observation (thread 11's
+2000-step measurement) is accurate as a 2000-step snapshot and is not edited -- but a
+forward pointer to this thread's 12,000-step finding (real movement given more budget,
+still no recall gain) is worth keeping in mind wherever that 2000-step number is cited as
+if it characterized the gate's ceiling rather than its state at that specific, shorter
+budget. Not pursuing a fourth gate variant or further budget escalation -- per idea I4's
+own scope, this thread's purpose was to test the recorded claim about the *existing*
+designs, which it has now done with a decisive, reproduced, and honestly-characterized
+answer.

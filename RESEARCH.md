@@ -379,8 +379,36 @@ points toward finite-width theory, not toward refuting it.** A properly powered
 quantitative re-test would need its own fresh pre-registration. See
 `docs/threads/15-finite-width-fluctuation-test.md`'s dated addendum for the full account.
 
-**Immediate next step:** rank-3 item from the portfolio review — the generous-budget gate
-check (idea I4) that thread 11's review specified but never ran, testing whether the
-gate-family's "no discoverable gradient signal" clause holds under 10k+ steps or
-repeated-batch overfitting. Needs its own pre-registered thread doc before code. Not yet
+**Thread 16 (rank-3 item, generous-budget gate check) built and run 2026-07-07: both arms
+technically pass their pre-registered bars, but an Opus review found the honest headline is
+"falsified in spirit," not "budget artifact confirmed."** Tested whether thread 11's
+gate-family closure ("no discoverable gradient signal") was a genuine optimization limit or
+an artifact of its 2000-step budget, via two arms at 6x the budget (12,000 steps): Arm A
+(fresh-random-batch, generalization) and Arm B (repeated sampling from a fixed 128-example
+pool, pure memorization). **Arm A's held-out accuracy stayed flat at 0.0316** — statistically
+indistinguishable from thread 11's 0.032 control despite 6x more compute, far below the 0.30
+"solved recall" bar — but the write gate moved 4.70x from init, clearing the pre-registered
+weaker OR-clause and producing a literal PASS. **Arm B reached 1.0000 training accuracy**
+(near-perfect memorization) on the fixed pool. An independent Opus review (re-ran the code,
+reproduced every number, added diagnostics the original driver didn't collect) found: (1) the
+`>=2x` gate-growth bar was miscalibrated — it sits in the sigmoid's saturated tail, so 4.7x
+relative growth is only +1.63 nats of real logit movement, from "deeply closed" to "still
+quite closed," not to "open"; (2) what the gate is opening *toward* is a **recency-weighted
+in-context-copy shortcut, not partial recall** — per-position accuracy climbs from 0.000
+(oldest pairs) to 0.08-0.13 (most recent pair), and "always output the most recent value"
+alone scores 0.137, close to the observed accuracy; (3) Arm B's memorization is a low bar
+(~550 params/example) that mainly rules out catastrophic dead gradients — the memorizing
+model generalizes at chance (0.0039) on fresh data, so memorization and the recall
+*algorithm* are fully decoupled. **Verdict: the budget-artifact reading is not supported —
+6x compute bought zero held-out-accuracy gain — but one real correction to the prior record
+is earned: the gate does NOT show "no discoverable gradient signal" given enough budget (it
+moves substantially, directedly), it just converges on a copy shortcut rather than solving
+recall.** This strengthens the architectural-insufficiency reading (Zoology, portfolio
+review section 2.2) over a pure "just needed more steps" one. Sub-line does not reopen. See
+`docs/threads/16-generous-budget-gate-check.md`'s dated addendum for the full account.
+
+**Immediate next step:** rank-4 item from the portfolio review — idea I3, a new
+recall-mechanism thread (two-layer composition / short-conv / DeltaNet-style state) carrying
+thread 9's still-deferred prediction B (does predictability survive learned selectivity, once
+an arm actually learns recall). Needs its own pre-registered thread doc before code. Not yet
 started.

@@ -37,6 +37,7 @@ experiments/
     thread13_robust_gradient_flow.py  # Theil-Sen version of thread 12, see finding below -- built
     thread14_mup_coordinate_check.py  # idea I1, see finding below -- built
     thread15_finite_width_fluctuation.py  # idea I2, see finding below -- built
+    thread16_generous_budget_gate_check.py  # idea I4, see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
@@ -297,6 +298,31 @@ specified; qualitative signal still points toward finite-width theory, not again
 a properly powered magnitude re-test would need its own fresh pre-registration. Full
 account in `docs/threads/15-finite-width-fluctuation-test.md`'s dated addendum.
 
+## Thread 16 finding (2026-07-07, CPU, `scripts/thread16_generous_budget_gate_check.py`) — gate-family record corrected, sub-line does not reopen
+
+Portfolio review's rank-3 idea (I4): does the gate-family sub-line's (9/10/11) "no
+discoverable gradient signal" closure hold under 6x more budget, or was it a budget
+artifact? Two arms at 12,000 steps (vs. thread 11's 2000), 5 seeds, ~17 min CPU. **Arm A**
+(fresh-batch, generalization) held-out accuracy stayed flat at 0.0316 -- statistically
+indistinguishable from thread 11's 0.032 control -- but the write gate moved 4.70x from
+init, clearing the pre-registered OR-criterion's weaker gate-growth clause, producing a
+literal PASS. **Arm B** (repeated sampling from a fixed 128-example pool) reached 1.0000
+training accuracy. An independent Opus review (re-ran the code, reproduced every number,
+added diagnostics the driver didn't collect) found the literal PASS is misleading: the
+`>=2x` gate-growth bar sits in the sigmoid's saturated tail (4.7x relative growth is only
++1.63 nats, "deeply closed" to "still quite closed," not "open"), and what the gate opens
+*toward* is a recency-weighted in-context-copy shortcut, not partial recall (per-position
+accuracy climbs from 0.000 for the oldest pairs to 0.08-0.13 for the most recent, matching
+a naive "always output the most recent value" heuristic's 0.137). Arm B's memorization is a
+low bar (~550 params/example) that mainly rules out catastrophic dead gradients -- the
+memorizing model generalizes at chance (0.0039) on fresh data. **Verdict: budget-artifact
+reading not supported (6x compute bought zero held-out-accuracy gain) -- but one real
+correction to the prior record is earned: the gate does show a discoverable, directed
+gradient signal given enough budget, it just converges on a copy shortcut rather than
+solving recall.** Strengthens the architectural-insufficiency reading (Zoology) over a pure
+budget-artifact one; sub-line does not reopen. Full account in
+`docs/threads/16-generous-budget-gate-check.md`'s dated addendum.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
@@ -337,7 +363,10 @@ parked but its adverse reads are now attributed to the task, not the scaling cod
 falsified on miscalibrated bands, but the qualitative signal still favors finite-width
 theory over finite-depth-saturation for the criticality sub-line's residual anomaly; a
 properly powered quantitative re-test is not currently planned (needs its own fresh
-pre-registration if picked up later). Remaining ranked items: (3) generous-budget gate
-check, (4) a new recall-mechanism thread (composition / short-conv / DeltaNet-style state,
-carrying thread 9's deferred prediction B) — each needing its own pre-registered thread doc
-before code. See `RESEARCH.md` section 8 for the full status.
+pre-registration if picked up later). Rank-3 (generous-budget gate check, thread 16) is
+also done -- 6x budget bought zero held-out-accuracy gain (gate-family sub-line does not
+reopen), but corrected the prior record's "no discoverable gradient signal" phrasing (the
+gate does move substantially given more budget, just toward a copy shortcut, not recall).
+Remaining ranked item: (4) a new recall-mechanism thread (composition / short-conv /
+DeltaNet-style state, carrying thread 9's deferred prediction B) — needs its own
+pre-registered thread doc before code. See `RESEARCH.md` section 8 for the full status.
