@@ -352,3 +352,19 @@ review; edge-of-chaos/finite-width review; muP transfer review; threads-4/7/8 re
 code/design meta-review. Key papers cited above by arXiv ID throughout. Reminder: snippet-
 level verification only (403-blocked primary fetches) — read the primary papers before
 building a pre-registration on any single-source claim (flagged inline in sections 2-4).
+
+---
+
+**Correction note, 2026-07-08 (from the program regroup's independent review — see
+`docs/reviews/2026-07-08-program-regroup.md`):** section 2.3's finite-width receipt
+contains a numerical error. It reads threads 12/13's grid as "depth 362 at width ~256
+(`r ~ 1.4` at the far end, ~0.5 at depth 128)". The width is actually fixed at
+`hidden=32` in both scripts (`experiments/scripts/thread12_gradient_flow_depth_scale.py:33`,
+`thread13_robust_gradient_flow.py:29`) — 256 is a value on the *depth* grid, not the
+width — so `r = depth/width` reaches ~11.3 at depth 362, identical to thread 15's
+narrowest cell (thread 15's own doc states this correctly, so the record was internally
+contradictory until now). The section's argument is unaffected and, if anything,
+strengthened: the grid sits roughly 8x further outside mean-field's `r << 1` validity
+regime than stated. The wrong figure had been imported into thread 13's addendum and
+CLAUDE.md's summary; dated/in-place corrections were added there in the same commit as
+this note.

@@ -242,3 +242,13 @@ three attempts (`docs/threads/11-dual-gate-spectral-recurrence.md`).
    structurally different measurements this doc already calls for — per-layer gradient
    tracking plus explicit `Var[log grad]`-vs-depth (and its width scaling) — sketched with
    a pre-registrable quantitative form as the review doc's ideas I2/I5.
+
+**Correction note, 2026-07-08:** the finite-width framing note above (imported from the
+2026-07-07 portfolio review, section 2.3) states this grid reaches `r ~ 1.4` at depth
+362/width 256. The width is actually fixed at `hidden=32`
+(`experiments/scripts/thread13_robust_gradient_flow.py:29`), so `r = depth/width` reaches
+~11.3 at depth 362 — the "256" was a depth-grid value misread as the width. The direction
+of the framing argument is unchanged (this grid sits even further outside mean-field's
+controlled `r << 1` regime than stated, matching thread 15's grid exactly). See the dated
+correction note at the bottom of the portfolio review doc; caught by the 2026-07-08
+program regroup's independent review.

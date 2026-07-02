@@ -484,27 +484,38 @@ setup?"), a full audit of *why* the verdict stream is nearly all falsifications.
 finding: of 13 negative-reading verdicts, 7 were the apparatus falsifying its own bars
 (out-of-regime bands, underpowered tests, mis-specified thresholds — threads 2, 12, 13,
 14, 15A, 15B, 16), 2 were construction confounds (17a-broad, 17b), and 5 were real kills —
-3 literature-pre-answered (the gate family, 9/10/11) and 2 genuinely open (17a-narrow,
+3 literature-pre-answered (the gate family, 9/10/11 — themselves init-confounded per the
+2026-07-07 review's 2.2, so mixed rather than clean) and 2 genuinely open (17a-narrow,
 17c) but confined to a protocol never validated as learnable by anything. The code
 itself is clean (no falsification was ever traced to a harness bug); the defects are in
 experiment design. Root causes and the full argument are in the regroup doc. Adopted with
-it: **methodology amendments v2** (`docs/methodology.md`: literature screen with kill
-rule, regime-validity statement, noise-floor pilot, mandatory positive-control arm for
-capability claims, stated prior pass-probability per prediction) and a reporting rule
-separating "verdict" from "net knowledge."
+it: **methodology amendments v2** (`docs/methodology.md`, six items: literature screen
+with kill rule, regime-validity statement, noise-floor pilot, mandatory positive-control
+arm for capability claims, stated prior pass-probability per prediction, independent
+pre-run design review) and a reporting rule separating "verdict" from "net knowledge."
+The regroup draft was itself independently reviewed (approve-with-corrections) and
+reconciled via the dated changelog note at its bottom; that review also caught a numeric
+error in the committed record (the 2026-07-07 review's `r ~ 1.4` for threads 12/13 —
+actually `r ~ 11`, hidden=32; dated corrections added to the portfolio review and thread
+13 docs).
 
-**Immediate next step (decided):** (1) **thread 18 — recall-protocol validation**: a
-minimal 2-layer attention model (the literature's known-sufficient reference) under the
-exact existing recall protocol, to determine whether the protocol is learnable at all at
-this scale/budget — retroactively supplying the positive control the seven-experiment
-recall cluster never had (not a gate-family reopening; thread 11/17 closure rules
-untouched). Its pre-registration doc, written to the amended methodology, is the next
-artifact. (2) Then **thread 6's real run** (the keystone: build the tiny char-LM task,
-pin the protocol, execute at pre-registered scale on the user's GPU hardware) — the
-program's "falsify small, trust the trend" premise currently rests on adverse toy-scale
-evidence and no real-scale evidence. (3) Thread 4 (amended) is the designated next
-new-science thread after those. Threads 7-as-written/8/3/5 stay dead/deferred/blocked per
-the regroup's C4.
+**Immediate next step (decided — two parallel streams):** (1) **thread 18 —
+recall-protocol validation**: a minimal 2-layer attention model (the literature's
+known-sufficient reference) with the exact existing recall protocol as the primary arm,
+plus an interpretability ladder (attention-centered LR grid, positional information, an
+`n_pairs=2` arm, an extended-budget arm) so a failure separates "protocol unlearnable"
+from "control under-configured" — retroactively supplying the positive control the
+seven-experiment recall cluster never had (not a gate-family reopening; thread 11/17
+closure rules untouched). Its pre-registration doc, written to the amended methodology
+and passed through the new pre-run design review, is the next artifact. (2) In parallel,
+**thread 6's real-run prep** (the keystone: build the tiny char-LM task, pin the
+protocol, produce the packaged GPU handoff — self-contained run script with bands frozen
+before handoff plus a results-ingestion template — for execution on the user's GPU
+hardware; the sandbox-to-GPU handoff has never been exercised and is itself a deliverable
+to prove) — the program's "falsify small, trust the trend" premise currently rests on
+adverse toy-scale evidence and no real-scale evidence. (3) Thread 4 (amended) is the
+designated next new-science thread after those. Threads 7-as-written/8/3/5 stay
+dead/deferred/blocked per the regroup's C4.
 
 **Calibration ledger** (methodology amendment v2.5; entries begin with thread 18 — past
 threads pre-registered no prior pass-probabilities, so they are not retro-scored):

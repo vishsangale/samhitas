@@ -108,10 +108,11 @@ record.
 ## Amendments v2 (2026-07-08, adopted by the program regroup — see
 `docs/reviews/2026-07-08-program-regroup.md` for the evidence behind each)
 
-Five additional pre-registration requirements for every thread doc written after this
+Six additional pre-registration requirements for every thread doc written after this
 date. None changes any existing thread's recorded prediction or verdict (per the
 pre-registration rule above, history is never edited); they change what a *new* thread doc
-must contain before its experiment may run.
+must contain before its experiment may run. (Item 6 was added at the regroup's own
+independent review's insistence, for the reason stated there.)
 
 1. **Literature screen, with a kill rule.** A "prior art check" section written before
    the bands are set: what does the closest published work say about this exact claim? If
@@ -144,6 +145,16 @@ must contain before its experiment may run.
    outcome is appended to a running ledger in `RESEARCH.md` section 8. A ledger pinned at
    0% (or 100%) means band-generation is miscalibrated — now a monitorable failure mode
    rather than a felt one.
+6. **Independent pre-run design review.** The finished pre-registration — literature
+   screen, regime-validity statement, noise-floor pilot result, bands, controls, and
+   stated priors — gets an independent review (same mechanism as the repo's existing
+   post-hoc result reviews) *before* the experiment runs, and the thread doc records that
+   it happened. Rationale: every review in this repo's history to date audited results
+   after the fact, while the failure mode the 2026-07-08 regroup diagnoses (overconfident
+   band-generation) happens before the run, where no reviewer had ever looked; items 1-5
+   above are themselves self-authored checklists, and a checklist written by the same
+   process that set the mis-calibrated v1 bands is not, on its own, evidence the v2 bands
+   will be better.
 
 ## What counts as a "diagnostic task"
 

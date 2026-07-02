@@ -182,8 +182,10 @@ generous-budget check that would earn "learnability limit" was specified but nev
 and the literature says this single-gated-recurrence class is a known-insufficient
 architecture for multi-pair recall — the capacity half *is* supported, via Zoology's lower
 bound); thread 13's residual chaotic-phase bias is plausibly *predicted* finite-width
-physics (Hanin & Nica log-normal gradients; depth/width up to ~1.4 on this grid is outside
-mean-field's controlled regime), not mere measurement error; thread 6's muP Adam
+physics (Hanin & Nica log-normal gradients; depth/width reaches ~11 on this grid —
+hidden=32; the review's original "~1.4" figure misread a depth value as the width,
+corrected 2026-07-08 — far outside mean-field's controlled regime), not mere measurement
+error; thread 6's muP Adam
 multipliers were statically verified correct, shifting suspicion to the task
 (grokking/weight-decay dynamics) — a cheap coordinate check is the decisive next step. The
 review ends with a ranked next-step list (RESEARCH.md section 8 has the short version):
@@ -376,17 +378,30 @@ bands, underpowered tests, mis-set thresholds), 2 were construction confounds, a
 ones sat on a task protocol never validated as learnable by anything — i.e. the program
 has mostly been measuring its own bar-miscalibration and re-deriving published results, while
 its genuinely novel/decisive items (thread 6's real-scale run, thread 4, prediction B)
-never ran. Adopted with it: **methodology amendments v2** (`docs/methodology.md`) —
-literature screen with kill rule, regime-validity statement, noise-floor pilot before
-bands freeze, mandatory positive-control arm for capability claims, stated prior
-pass-probability + calibration ledger (ledger lives in RESEARCH.md section 8).
+never ran. Adopted with it: **methodology amendments v2** (`docs/methodology.md`, six
+items) — literature screen with kill rule, regime-validity statement, noise-floor pilot
+before bands freeze, mandatory positive-control arm for capability claims, stated prior
+pass-probability + calibration ledger (ledger lives in RESEARCH.md section 8), and an
+independent *pre-run* design review of every new pre-registration. The regroup draft was
+itself independently reviewed (verdict: approve-with-corrections) and reconciled — the
+full changelog is a dated note at the bottom of the regroup doc. That review also caught
+a real numeric error in the committed record (the 2026-07-07 review's `r ~ 1.4` for
+threads 12/13 misread a depth value as the width; actual `r ~ 11`) — dated corrections
+added to the portfolio review and thread 13 docs.
 
-**Next step (decided, not yet started): thread 18 — recall-protocol validation.** A
-minimal 2-layer attention model (the literature's known-sufficient reference for this
-task) under the exact existing recall protocol, to establish whether that protocol is
+**Next step (decided, not yet started — two parallel work streams):** (1) **thread 18,
+recall-protocol validation**: a minimal 2-layer attention model (the literature's
+known-sufficient reference for this task) with the exact existing recall protocol as the
+primary arm plus an interpretability ladder (attention-centered LR grid, positional
+info, an `n_pairs=2` arm, an extended-budget arm — so a failure separates "protocol
+unlearnable" from "control under-configured"), establishing whether the protocol is
 learnable at all at this scale/budget — the positive control the seven-experiment recall
-cluster never had. Not a gate-family reopening (no gated-recurrence variant; thread 11/17
-closure rules untouched). Its pre-registration doc must satisfy the amended methodology
-(including the noise-floor pilot) before any code. After it: thread 6's real run (build
-tiny char-LM task, pin protocol, execute on the user's GPU), then thread 4 (amended) as
-the next new-science thread. See the regroup doc's section 4 for the full decision set.
+cluster never had. Not a gate-family reopening (no gated-recurrence variant; thread
+11/17 closure rules untouched). (2) **thread 6 real-run CPU prep in parallel**: build
+the tiny char-LM task, pin the protocol, and produce a packaged self-contained GPU
+handoff (run script with bands frozen before handoff + results-ingestion template) for
+execution on the user's hardware — the sandbox→GPU handoff has never been exercised and
+is itself a deliverable to prove. Both pre-registration docs must satisfy all six
+amended-methodology items, including the new pre-run design review. After those: thread
+4 (amended) as the next new-science thread. See the regroup doc's sections 4/6 for the
+full decision set.
