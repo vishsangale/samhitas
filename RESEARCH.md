@@ -450,10 +450,38 @@ pre-registration.** Every failed arm in the sub-line so far (9/10/11/16, 17a, 17
 to a training loss near `ln(512)=6.238` — not even fitting the training distribution,
 reinforcing these are optimization/capacity failures, not eval artifacts.
 
-**Immediate next step:** thread 17's arm (c) — a DeltaNet-style outer-product matrix state
-with spectrally-constrained decay. Both arm reviews independently converged on this as the
-most promising remaining probe: a single-block change (sidesteps both arm (a)'s and (b)'s
-optimization confounds) that directly targets Zoology's diagnosed bottleneck — state
-*capacity* (`~hidden^2` for a matrix state vs. `~hidden` for a vector state) — the
-mechanism the literature has the highest confidence in for recall at this scale. Already
-pre-registered as part of thread 17's doc; needs a new model file (not yet built).
+**Arm (c) (DeltaNet-style matrix state) run 2026-07-07: falsified decisively, and unlike
+arms (a)/(b), with no rescuing confound found — thread 17's recall-mechanism ladder now
+closes with all three arms falsified.** Best config (lr=3e-4) reached only 0.0047 mean
+accuracy — the worst result in the entire portfolio, below every prior control including
+the mathematically-incapable ungated linear baseline (0.020). A pre-run sanity check had
+shown the same architecture memorizes a fixed batch to 100% within 100 steps, seemingly
+ruling out a dead-gradient problem — but an Opus review found this was a shortcut, not
+evidence the mechanism works: corrupting the context but keeping only the query token still
+retained 0.81 memorization accuracy, i.e. memorization rode a direct query-token-to-target
+leak in the read-back formula (`o_t=(1-beta)*pred_v+beta*v_t`), not real storage/retrieval —
+a shortcut only available with a *fixed* set of queries, unavailable in the actual online
+protocol's fresh-random queries. Direct diagnostics confirmed the write gate (`beta`) never
+opens toward recall: it falls *monotonically* during online training (0.020→0.0087), a
+trained-model retrieval probe found the state carries essentially no recoverable
+information about the correct value (retrieved-vs-correct cosine similarity 0.033), and
+forcing `beta` open at init doesn't help — training drives it back closed, the same pattern
+thread 11 found for a different mechanism. Testing both candidate fixable confounds
+directly (closed-`beta` init; read-after-write self-corruption at the query step) found
+neither rescues recall. **Verdict: capacity alone is not sufficient — a full matrix state
+was provided and never used, because the delta rule's gated write has no discoverable
+online gradient toward recall in this budget.** This is a genuinely new, less-confounded
+data point than arms (a)/(b) (not a third instance of the same bug), strengthening the
+sub-line's optimization/learnability story. Since all three arms failed prediction A,
+**prediction B (thread 9's still-deferred question) stays formally untested** — moot per
+the pre-registration, since it only runs on an A-pass. See
+`docs/threads/17-recall-mechanism-ladder.md`'s dated addenda for the full account of all
+three arms.
+
+**Immediate next step:** the portfolio review's ranked list (ranks 1-4, ideas I1/I2/I4/I3)
+is now fully executed. No further item is currently queued — the next move is either (a) a
+fresh full-portfolio regroup (matching this repo's established pattern after a batch of
+falsifications, per the 2026-07-07 review's own precedent) to re-rank what's left (threads
+4, 6's real run, 8, and any freshly-motivated follow-up like a properly-configured arm (c)
+variant or a curriculum-plus-fixed-key-value design), or (b) picking a single specific next
+item if one is judged clearly highest-value without a full regroup. Not yet decided.

@@ -40,6 +40,7 @@ experiments/
     thread16_generous_budget_gate_check.py  # idea I4, see finding below -- built
     thread17_arm_b_shortconv.py  # idea I3 arm (b), see finding below -- built
     thread17_arm_a_composition.py  # idea I3 arm (a), see finding below -- built
+    thread17_arm_c_deltanet.py  # idea I3 arm (c), see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
@@ -369,6 +370,31 @@ reviews independently recommend it as a single-block change that sidesteps both
 confounds and directly targets Zoology's state-capacity bottleneck. Full account in
 `docs/threads/17-recall-mechanism-ladder.md`'s dated addendum.
 
+## Thread 17 arm (c) finding (2026-07-07, CPU, `scripts/thread17_arm_c_deltanet.py`) — ladder closes, no rescuing confound this time
+
+Third and final arm of the recall-mechanism ladder: a DeltaNet-style matrix state (delta-
+rule update, spectrally-constrained decay). Full grid (5 LRs x 5 seeds) ran in ~19.5 min
+CPU. **Best config (lr=3e-4) reached only 0.0047 mean accuracy -- the worst result in the
+entire portfolio, below every prior control including the mathematically-incapable ungated
+linear baseline (0.020).** A pre-run sanity check had shown the same architecture memorizes
+a fixed batch to 100% within 100 steps, seemingly ruling out a dead-gradient problem -- but
+an Opus review found this was a shortcut riding a direct query-token-to-target leak in the
+read-back formula, not evidence the recall mechanism works (corrupting the context but
+keeping only the query token still retained 0.81 memorization accuracy); the shortcut is
+unavailable online, where queries are fresh-random every step. Direct diagnostics confirmed
+the write gate never opens toward recall: it falls monotonically during online training
+(0.020->0.0087), a trained-model retrieval probe found the state carries essentially no
+recoverable information about the correct value (cosine similarity 0.033), and forcing the
+gate open at init doesn't help -- training drives it back closed. Testing both candidate
+fixable confounds directly (closed-gate init; read-after-write self-corruption) found
+neither rescues recall. **Verdict: capacity alone is not sufficient -- a full matrix state
+was provided and never used, because the delta rule's gated write has no discoverable
+online gradient toward recall in this budget.** Unlike arms (a)/(b), no rescuing confound
+was found -- a genuinely new, less-confounded data point. **All three arms of the ladder
+now falsified prediction A; thread 9's deferred prediction B stays formally untested** (it
+only runs on an A-pass, and no arm passed). Full account in
+`docs/threads/17-recall-mechanism-ladder.md`'s dated addenda.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
@@ -413,11 +439,10 @@ pre-registration if picked up later). Rank-3 (generous-budget gate check, thread
 also done -- 6x budget bought zero held-out-accuracy gain (gate-family sub-line does not
 reopen), but corrected the prior record's "no discoverable gradient signal" phrasing (the
 gate does move substantially given more budget, just toward a copy shortcut, not recall).
-Rank-4 (recall-mechanism ladder, thread 17) is pre-registered (all three arms: composition,
-short-conv, DeltaNet-style state, carrying thread 9's deferred prediction B); arms (b) and
-(a) are both run and both falsified (arm (b): a confounded conv init, not a clean negative
-result; arm (a): cleanly falsified as specified, but the broader composition hypothesis
-wasn't fairly tested due to a depth-2 gradient-starvation pathology). Next: build and run
-arm (c) (DeltaNet-style outer-product state), already pre-registered in
-`docs/threads/17-recall-mechanism-ladder.md`, needs a new model file. See `RESEARCH.md`
+Rank-4 (recall-mechanism ladder, thread 17) is done -- all three arms (composition,
+short-conv, DeltaNet-style matrix state) falsified prediction A, so thread 9's deferred
+prediction B stays formally untested. All four ranked items from the portfolio review are
+now executed. No item is currently queued -- next move is either a fresh portfolio regroup
+or a single specific pre-registered follow-up (e.g. a properly-configured arm (c) variant
+combining its named fixes with a learnability aid), not yet decided. See `RESEARCH.md`
 section 8 for the full status.

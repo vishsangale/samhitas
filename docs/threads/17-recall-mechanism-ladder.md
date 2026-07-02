@@ -329,3 +329,97 @@ diagnosed bottleneck -- Zoology's *state capacity* bound (a matrix state scales 
 `~hidden^2`, vs. a vector state's `~hidden`) -- the mechanism the literature has the
 highest confidence in for recall at this scale. Prediction B not run for arm (a) (per
 pre-registration, only runs on an A-pass).
+
+**Post-hoc note, 2026-07-07, arm (c) DeltaNet-style matrix state
+(`scripts/thread17_arm_c_deltanet.py`): prediction A falsified, decisively and (unlike
+arms a/b) with no rescuing confound found -- the write gate simply never opens toward
+recall under online training.**
+
+Full grid (5 LRs x 5 seeds x 2000 steps) ran in ~19.5 min CPU. **Best config (lr=3e-4):
+mean accuracy 0.0047** across 5 seeds -- not just far below 0.30, but the *worst result in
+the entire portfolio so far*, below every prior control including the mathematically-
+incapable ungated linear baseline (0.020). Accuracy decreased as LR increased (0.0047 at
+3e-4 down to ~0.0012-0.0016 at higher LRs), the same non-plateau-escaping pattern seen in
+arm (a). **Prediction A: FAIL.**
+
+This was surprising given a pre-run sanity check (not part of the pre-registered protocol,
+done to catch obvious bugs before committing to the full grid) had shown the exact same
+architecture reaches 100% training accuracy memorizing a single *fixed* batch within 100
+steps -- seemingly ruling out a dead-gradient/capacity problem. Sent to an independent Opus
+review before drawing any conclusion, given how surprising a below-every-baseline result
+was. The review reproduced the headline exactly (bit-for-bit) and ran targeted mechanism
+diagnostics:
+
+1. **No fundamental bug in the delta rule, decay, or read-back.** Because `k_t` is
+   L2-normalized, the read-back algebraically reduces to
+   `o_t = (1-beta_t)*pred_v + beta_t*v_t` (verified to 2.2e-8 precision) -- not degenerate
+   at init, where `beta~=0.02` makes `o_t` close to the genuine retrieval `pred_v`. There
+   *is* one real structural wart: at the query step, reading with the same key just used to
+   write corrupts the earlier association along that direction and injects
+   `beta*W_v(query_token)` (pure noise w.r.t. the target, since the query token's own value
+   projection carries no information about its earlier-paired value). But the review
+   **directly tested the fix** (read the state *before* the query-step's own write) and it
+   did **not** rescue recall (mean accuracy 0.0020-0.0026) -- so this wart is real but not
+   the primary cause; the state never held a useful association in the first place.
+2. **The fixed-batch memorization "success" that motivated running the full grid was
+   revealed to be a shortcut, not evidence the recall mechanism works.** After memorizing a
+   fixed batch to 100% training accuracy, the review corrupted inputs: randomizing the
+   *entire context* but keeping only the query token retained **0.8125** training accuracy.
+   Memorization is overwhelmingly a direct query-token -> target lookup riding the
+   `beta*v_t` self-leak in the read-back formula, not storage/retrieval of the earlier
+   key-value pairs -- a shortcut that only works because a *fixed* batch has a fixed,
+   memorizable set of query->target pairs. Online (the actual pre-registered protocol),
+   queries are fresh-random every step, so this shortcut cannot generalize and there is
+   nothing else the model learned to do. **This corrects the sanity check's original
+   framing** -- it ruled out a dead-gradient problem for the embedding/readout pathway, not
+   for the recall mechanism specifically.
+3. **Direct diagnostics confirm the write gate never opens toward recall.** An online
+   `beta_t` trace (lr=3e-3) shows it falling *monotonically* from 0.020 to 0.0087 over
+   training -- gradient actively closes the write gate further, not just failing to open
+   it. A trained-model retrieval probe found the state's predicted retrieval at the query
+   position has norm 0.037 vs. the correct value's norm 4.56 (~120x too small) and cosine
+   similarity 0.033 to the correct value -- the state carries essentially no recoverable
+   information. Forcing `beta` open at init (bias 0, `beta~=0.5`) doesn't rescue it either
+   -- training drives it back down to 0.07-0.13, the same "not a simple init trap" pattern
+   thread 11's review found for the single-gate mechanism.
+4. **Underperforming the mathematically-incapable ungated baseline is itself diagnostic,
+   not just further noise.** The ungated linear baseline writes every value additively (a
+   lossy but nonzero superposition the readout can partially exploit); arm (c)'s
+   multiplicative delta-rule write, driven to a near-closed `beta`, stores almost nothing
+   (per the retrieval probe above) -- strictly *less* usable signal than a construction with
+   no gate at all. A larger matrix state's capacity is irrelevant when the write pathway
+   into it stays closed.
+
+**Verdict (Opus review, adopted here): prediction A is falsified decisively and fairly --
+and, distinctively among this thread's three arms, *without* a rescuing confound.** The
+review directly tested the two candidate fixable explanations (closed-`beta` init; the
+read-after-write self-corruption) and neither rescues recall -- training robustly re-closes
+the write gate under every tested configuration. **The honest, informative reading: capacity
+alone is not sufficient.** A full matrix state (`~hidden^2` capacity) was provided and never
+used, because this delta-rule's gated write has no discoverable online gradient toward
+recall within a 2000-step budget -- how a mechanism *writes* into its capacity matters as
+much as having the capacity, strengthening (not just repeating) the sub-line's
+optimization/learnability story with a genuinely new data point rather than a third instance
+of the same confound.
+
+**Fairness caveat, stated precisely rather than overclaimed:** this is the minimal
+single-head, unnormalized delta rule with a learned sigmoid `beta` at 2000 online steps --
+not full DeltaNet (multi-head, normalization, typically larger/curriculum training). Ruling
+out two specific fixes narrows the failure to "the write gate won't open online, robust to
+init and read-timing," but doesn't fully separate "matrix-state capacity is insufficient
+for this task" from "this minimal single-head configuration is hard to optimize online."
+Precisely named, fixable candidates for a possible fresh thread (none pursued now, each
+would need its own pre-registration): (i) a fixed/non-learned or warmup-scheduled `beta`
+instead of a near-closed learned sigmoid with no online gradient to open it; (ii)
+read-before-write at the query position (tested in isolation here, didn't help alone -- may
+need combining with (i)); (iii) a memorization control that forces genuine use of earlier
+context rather than being shortcut-solvable via the query-token leak.
+
+**Recall-mechanism ladder closes: all three pre-registered arms falsified prediction A.**
+Per the pre-registration's own interpretation rules, prediction B (does predictability
+survive learned selectivity) only runs on an A-pass -- since no arm passed, **B stays
+untested and thread 9's deferred prediction remains formally deferred**, not answered
+either way. A genuinely new attempt at any of composition, shift, or matrix-state capacity
+would need a structurally different, freshly pre-registered design (e.g. combining arm (c)'s
+named fixes with a curriculum or explicit key-addressed memory with a non-gated write) --
+not a fourth variant under this thread's label.

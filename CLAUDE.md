@@ -331,10 +331,46 @@ Every failed arm in the sub-line so far (9/10/11/16, 17a, 17b) converges to a tr
 near `ln(512)=6.238` -- optimization/capacity failures, not eval artifacts. See the thread
 17 doc's dated addendum for the full account.
 
-**Next step: thread 17's arm (c)** — a DeltaNet-style outer-product matrix state with
-spectrally-constrained decay, already pre-registered as part of the thread 17 doc. Both arm
-reviews independently converged on this as the most promising remaining probe: a
-single-block change that sidesteps both arm (a)'s and (b)'s optimization confounds and
-directly targets Zoology's diagnosed bottleneck -- state *capacity* (`~hidden^2` for a
-matrix state vs. `~hidden` for a vector state) -- the mechanism the literature has the
-highest confidence in for recall at this scale. Needs a new model file; not yet built.
+Arm (c) (DeltaNet-style outer-product matrix state) was then built and run. Full grid (5
+LRs x 5 seeds, 2000 steps) ran in ~19.5 min CPU. **Best config (lr=3e-4) reached only
+0.0047 mean accuracy — the worst result in the entire portfolio so far**, below every prior
+control including the mathematically-incapable ungated linear baseline (0.020). A pre-run
+sanity check had shown the same architecture memorizes a fixed batch to 100% within 100
+steps, seemingly ruling out a dead-gradient problem — but an independent Opus review found
+this was a shortcut, not evidence the mechanism works: after memorization, corrupting the
+context but keeping only the query token still retained 0.81 accuracy, i.e. memorization
+rode a direct query-token-to-target leak in the read-back formula
+(`o_t=(1-beta)*pred_v+beta*v_t`), a shortcut only available with a fixed set of queries,
+unavailable in the actual online protocol's fresh-random queries. Direct diagnostics
+confirmed the write gate never opens toward recall: it falls *monotonically* during online
+training (0.020→0.0087), a trained-model retrieval probe found the state carries
+essentially no recoverable information about the correct value (cosine similarity 0.033 to
+the correct value), and forcing the gate open at init doesn't rescue it either — training
+drives it back closed, the same pattern thread 11 found for a different mechanism. Testing
+both candidate fixable confounds directly (closed-gate init; read-after-write self-
+corruption at the query step) found neither rescues recall. **Verdict: capacity alone is
+not sufficient — a full matrix state was provided and never used, because the delta rule's
+gated write has no discoverable online gradient toward recall in this budget.** Unlike arms
+(a)/(b), no rescuing confound was found here — a genuinely new, less-confounded data point
+strengthening the sub-line's optimization/learnability story. See the thread 17 doc's dated
+addendum for the full account.
+
+**Thread 17 (the recall-mechanism ladder) closes: all three arms (composition, short-conv,
+DeltaNet-style matrix state) falsified prediction A.** Per the pre-registration's own
+interpretation rules, prediction B (does predictability survive learned selectivity) only
+runs on an A-pass — since no arm passed, thread 9's still-deferred prediction B stays
+formally untested, not answered either way. This also closes out all four ranked items from
+the 2026-07-07 portfolio review (I1 muP coordinate check, I2 finite-width fluctuation test,
+I4 generous-budget gate check, I3 recall-mechanism ladder) — every rank-1-through-4 item is
+now executed.
+
+**Next step: not yet decided.** No further item is currently queued from the portfolio
+review's ranked list. The natural options, per this repo's own established pattern (a fresh
+regroup after a batch of falsifications, matching the 2026-07-07 portfolio review's own
+precedent): (a) a fresh full-portfolio regroup incorporating everything learned since
+2026-07-07 (four more falsified/clarified threads, several corrected framings) to re-rank
+what's left (thread 4, thread 6's still-not-started real GPU run, thread 8, and any
+freshly-motivated follow-up like a properly-configured arm (c) variant combining its named
+fixes with a learnability aid, or a curriculum-plus-fixed-key-value design); or (b) picking
+a single specific next item directly if one is judged clearly highest-value without a full
+regroup. Decide at the start of the next session.
