@@ -232,11 +232,38 @@ itself stays parked (its real GPU-scale run is still not started), but the imple
 bug explanation for its adverse smoke reads is now closed off with a decisive, reproduced
 answer. See the thread 14 doc's dated addendum for the full account.
 
-**Next step: idea I2 (+ I5) from the portfolio review's ranked list** — a finite-width
-fluctuation test (Hanin-Nica) that turns the criticality sub-line's residual chaotic-phase
-anomaly (threads 12/13) into a fresh, sharp falsifiable prediction: does `Var[log
-||grad||]` grow linearly with depth at a rate `~1/width`, and does the mean-vs-median slope
-gap match the log-normal identity that would quantitatively explain threads 12/13's
-2.7-4x undershoot? All infrastructure (`meanfield.py`, `deep_mlp.py`, gradient-flow hooks)
-already exists from threads 12/13; cost estimated at well under 1 CPU-hour. Needs its own
-pre-registered thread doc before any code. Not yet started.
+As of 2026-07-07 (continued): idea I2 was built and run as thread 15
+(`docs/threads/15-finite-width-fluctuation-test.md`). Pre-registered two quantitative
+predictions testing whether the threads 12/13 chaotic-phase gradient-flow undershoot
+matches Hanin-Nica finite-width theory: (A) `Var[log||grad||]` growth-vs-depth slope should
+scale as `~1/width` across widths `{32,64,128}`; (B) the gap between mean-based and
+median-based depth-fit slopes should match the log-normal identity
+`gap_theory=var_growth_slope/2`. Full grid (4 anomalous `sigma_w2` points x 3 widths x 16
+depths x 50 seeds) ran in ~142s CPU. **Both falsified as specified** — but an independent
+Opus review (re-ran the grid, reproduced every number bit-for-bit) found the pre-registered
+bands were miscalibrated for this regime rather than the mechanism being wrong. Prediction
+A's positive control passed cleanly (4/4 `sigma_w2` show growing variance with depth), and
+the actual width-scaling exponent, directly fit, is a consistent -1.4 to -1.8 — steeper
+than leading-order Hanin-Nica's -1, traced to `Var[log grad]` being convex rather than
+linear in depth once `depth/width` reaches ~11, outside the theory's own
+leading-order-controlled regime (not evidence against the mechanism). Prediction B's tested
+quantity (a difference of two independently-fit slopes) has a bootstrap noise floor
+comparable to or larger than the effect itself in most cells — likely unresolvable at 50
+seeds, and its theory-side denominator inherited A's convexity bias. The informational
+Prediction C independently favors finite-width over the competing finite-depth-saturation
+story: per-layer forward statistics (`E[phi'^2]`) stay pinned at the theoretical
+fixed-point value through 362 layers with no saturation drift, even as gradient-log-variance
+explodes to ~11.7. **Verdict: falsified as specified; every cleanly-resolvable qualitative
+signal still points toward finite-width theory, not toward refuting it.** A properly
+powered quantitative re-test (convexity-respecting variance estimator, matched regression
+estimator on both sides of the gap, many more seeds) would need its own fresh
+pre-registration — not pursued now, since the disambiguating question (finite-width vs.
+finite-depth-saturation) this thread was built to answer already has a fairly clear
+qualitative answer. See the thread 15 doc's dated addendum for the full account.
+
+**Next step: idea I4 from the portfolio review's ranked list** — the generous-budget gate
+check thread 11's review specified but never ran (10k+ steps and/or repeated-batch
+overfitting on a small fixed set, single best config from thread 11, few seeds), testing
+whether the gate-family's "no discoverable gradient signal" clause holds under a much larger
+budget or is itself a budget artifact. Needs its own pre-registered thread doc before any
+code. Not yet started.

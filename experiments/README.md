@@ -36,6 +36,7 @@ experiments/
     thread12_gradient_flow_depth_scale.py  # grad-flow length vs xi, see finding below -- built
     thread13_robust_gradient_flow.py  # Theil-Sen version of thread 12, see finding below -- built
     thread14_mup_coordinate_check.py  # idea I1, see finding below -- built
+    thread15_finite_width_fluctuation.py  # idea I2, see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
@@ -273,6 +274,29 @@ machinery is mechanically sound, positively supporting thread 6's task/metric-ar
 hypothesis** over an implementation-bug explanation. Full account in
 `docs/threads/14-mup-coordinate-check.md`'s dated addendum.
 
+## Thread 15 finding (2026-07-07, CPU, `scripts/thread15_finite_width_fluctuation.py`) — chaotic-phase anomaly still open, qualitatively finite-width
+
+Portfolio review's rank-2 idea (I2): does the threads 12/13 chaotic-phase gradient-flow
+undershoot match Hanin-Nica finite-width log-normal-gradient theory quantitatively? Swept
+width `{32,64,128}` at the four anomalous `sigma_w2` points, 50 seeds, ~142s CPU. **Both
+pre-registered predictions failed as specified** -- Prediction A's `slope*width~const`
+band (ratios up to 2.9x vs. a 2x band) and Prediction B's log-normal mean/median gap
+identity (sign match 7/12, magnitude ratio 0.142) -- but an independent Opus review (re-ran
+the grid, reproduced every number bit-for-bit) found both bands were miscalibrated for this
+regime rather than the mechanism being wrong: Prediction A's positive control passed
+cleanly (4/4 `sigma_w2` show growing variance with depth) and the actual width-scaling
+exponent, directly fit, is a consistent -1.4 to -1.8 (steeper than leading-order Hanin-Nica,
+traced to `Var[log grad]` being convex rather than linear in depth once `depth/width`
+reaches ~11, outside the theory's controlled regime); Prediction B's tested quantity has a
+bootstrap noise floor comparable to or larger than the effect itself in most cells --
+likely unresolvable at 50 seeds. The informational Prediction C (per-layer forward
+statistics) independently favors finite-width over the competing finite-depth-saturation
+story: `E[phi'^2]` stays pinned at the theoretical fixed-point value through 362 layers
+with no saturation drift, even as gradient-log-variance explodes. **Verdict: falsified as
+specified; qualitative signal still points toward finite-width theory, not against it** --
+a properly powered magnitude re-test would need its own fresh pre-registration. Full
+account in `docs/threads/15-finite-width-fluctuation-test.md`'s dated addendum.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
@@ -307,9 +331,13 @@ hypothesis** over an implementation-bug explanation. Full account in
 The criticality-guided-init measurement-refinement sub-line (thread 2 -> 12 -> 13) is
 closed, mirroring the gate-family sub-line (9/10/11). A full-portfolio review
 (`docs/reviews/2026-07-07-portfolio-review.md`) ranked the candidate next steps; rank-1
-(muP coordinate check, thread 14) is now done -- no implementation bug found, thread 6
-stays parked but its adverse reads are now attributed to the task, not the scaling code.
-Remaining ranked items: (2) finite-width fluctuation test for the criticality anomaly, (3)
-generous-budget gate check, (4) a new recall-mechanism thread (composition / short-conv /
-DeltaNet-style state, carrying thread 9's deferred prediction B) — each needing its own
-pre-registered thread doc before code. See `RESEARCH.md` section 8 for the full status.
+(muP coordinate check, thread 14) is done -- no implementation bug found, thread 6 stays
+parked but its adverse reads are now attributed to the task, not the scaling code. Rank-2
+(finite-width fluctuation test, thread 15) is also done -- both pre-registered predictions
+falsified on miscalibrated bands, but the qualitative signal still favors finite-width
+theory over finite-depth-saturation for the criticality sub-line's residual anomaly; a
+properly powered quantitative re-test is not currently planned (needs its own fresh
+pre-registration if picked up later). Remaining ranked items: (3) generous-budget gate
+check, (4) a new recall-mechanism thread (composition / short-conv / DeltaNet-style state,
+carrying thread 9's deferred prediction B) — each needing its own pre-registered thread doc
+before code. See `RESEARCH.md` section 8 for the full status.

@@ -355,6 +355,32 @@ dynamics, not a broken scaling rule) over an implementation-bug explanation. No 
 before further thread-6 work. See `docs/threads/14-mup-coordinate-check.md`'s dated
 addendum for the full account.
 
-**Immediate next step:** rank-2 item from the portfolio review — a finite-width fluctuation
-test (idea I2, Hanin-Nica) for the criticality sub-line's residual chaotic-phase anomaly.
-Needs its own pre-registered thread doc before code. Not yet started.
+**Thread 15 (rank-2 item, finite-width fluctuation test) built and run 2026-07-07: both
+predictions falsified as specified, but the qualitative finite-width signal survives an
+Opus review.** Tested whether the threads 12/13 chaotic-phase gradient-flow undershoot
+matches Hanin-Nica finite-width theory quantitatively, across widths {32,64,128} at the
+four anomalous `sigma_w2` points. **Prediction A** (variance-growth slope should scale as
+`~1/width`) failed its pairwise-ratio band, but the positive control passed (4/4 `sigma_w2`
+show growing `Var[log grad]` with depth) and variance-growth slope decreases *monotonically*
+with width at every point — an independent Opus review fit the actual width exponent
+(-1.4 to -1.8, steeper than Hanin-Nica's leading-order -1) and traced this to `Var[log grad]`
+being convex, not linear, in depth once `depth/width` gets large (reaching `r~11` at this
+grid's deepest/narrowest cell) — outside the theory's own leading-order-controlled regime,
+not evidence against the mechanism. **Prediction B** (mean/median slope-gap should match the
+log-normal identity) also failed, but a bootstrap found the tested quantity's sampling noise
+is comparable to or larger than the effect itself in most cells — likely never resolvable at
+50 seeds. **Prediction C** (informational per-layer diagnostic) independently favors
+finite-width over the competing finite-depth-saturation explanation: forward statistics stay
+pinned at the theoretical fixed-point value through 362 layers with no saturation drift, even
+as gradient-log-variance explodes. **Verdict: falsified as specified — pre-registered bands
+were miscalibrated for this depth/width regime (leading-order-only law tested outside its
+validity range; underpowered gap test) — but every cleanly-resolvable qualitative signal
+points toward finite-width theory, not toward refuting it.** A properly powered
+quantitative re-test would need its own fresh pre-registration. See
+`docs/threads/15-finite-width-fluctuation-test.md`'s dated addendum for the full account.
+
+**Immediate next step:** rank-3 item from the portfolio review — the generous-budget gate
+check (idea I4) that thread 11's review specified but never ran, testing whether the
+gate-family's "no discoverable gradient signal" clause holds under 10k+ steps or
+repeated-batch overfitting. Needs its own pre-registered thread doc before code. Not yet
+started.

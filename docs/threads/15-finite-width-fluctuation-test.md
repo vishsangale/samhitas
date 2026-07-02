@@ -149,6 +149,77 @@ quantitative test rather than treating it as qualitative color commentary.
 
 ## Status
 
-Not yet run. Pre-registered 2026-07-07 (session-label date, per this repo's now-standard
-doc-date-vs-commit-date convention -- see `docs/reviews/2026-07-07-portfolio-review.md`'s
-bookkeeping note).
+Run 2026-07-07 (session-label date). **Both predictions A and B falsified as specified.**
+An independent Opus review, which re-ran the full grid from scratch and reproduced every
+number bit-for-bit, found the pre-registered bands were miscalibrated for this regime in
+concrete, diagnosable ways, but the underlying qualitative finite-width signal survives.
+See the dated post-hoc note below.
+
+**Post-hoc note, 2026-07-07 (Opus review):** Full grid (4 `sigma_w2` x 3 widths x 16 depths
+x 50 seeds) ran in ~142s CPU, reproduced bit-for-bit by the review.
+
+**Prediction A: FAIL** on the pre-registered `slope*width` pairwise-ratio band (ratios up
+to 2.9x, band was `[0.5, 2.0]`) -- but the positive control passed cleanly (4/4 `sigma_w2`
+show growing `Var[log grad]` with depth at width=32), and `var_growth_slope` decreases
+*monotonically* with width at every `sigma_w2` (e.g. `sigma_w2=2.2`: 0.0338 (w=32) ->
+0.0070 (w=64) -> 0.0029 (w=128)). The review fit the width-scaling exponent directly
+(`log(slope) ~ log(width)` across the 3 points) and found it consistently **-1.4 to -1.8**
+across all four `sigma_w2` -- steeper than Hanin-Nica's leading-order `-1`, not flatter,
+and traced this to a specific, checkable mechanism: `Var[log grad]` vs. depth is visibly
+**convex, not linear**, once `depth/width` gets large (e.g. at `sigma_w2=2.2, width=32`:
+`var_log_per_depth` goes 0.004, 0.007, ... 3.14 (d=128), 5.91 (d=181), 8.93 (d=256), 11.71
+(d=362) -- a late blow-up, not a straight line). Hanin-Nica's `Var ~ depth/width` is a
+leading-order result valid only for `r=depth/width << 1`; this grid reaches `r~11` at
+depth 362/width 32 and still `r~2.8` at width 128 -- outside the controlled regime the
+thread doc itself flagged as the motivation. A single global OLS slope fit to convex data
+is dominated by the last few (large-`r`) points, and widening pushes the blow-up to larger
+depth, suppressing the fitted slope *faster* than linearly. **The steeper-than-1/width
+exponent is consistent with the finite-width picture's own higher-order corrections
+becoming relevant, not evidence against it** -- but it does mean the specific leading-order
+`slope*width~const` band the prediction pre-registered was testing a law that doesn't apply
+across this depth range, not a clean test of the mechanism itself.
+
+**Prediction B: FAIL** on both sub-parts (sign match 7/12 of the needed 10/12; median
+magnitude ratio 0.142 vs. the `[0.33, 3.0]` band) -- but the review found this prediction
+was likely **never resolvable at this seed count**. A bootstrap (300 resamples of the 50
+seeds) found `gap_emp`'s sampling noise (std 0.0003-0.0022 across spot-checked cells) is
+comparable to or larger than `gap_emp` itself in 3 of 4 checked cells (e.g. `sigma_w2=2.2,
+width=64`: `gap_emp=-0.00042` vs. bootstrap std `0.00089`, so even the *sign* isn't
+resolvable there), and `gap_theory` itself sits only ~2-4 bootstrap-sigma from zero at the
+larger widths. Separately, the review flagged a methodological wart in the pre-registered
+design (not a bug, since the code does exactly what was specified): `gap_emp` subtracts a
+Theil-Sen slope (`slope_median`) from an OLS slope (`slope_mean`), conflating the
+mean-vs-median distinction B wants to measure with an estimator-type difference, and
+`gap_theory` (from Prediction A's linear-in-depth OLS var-fit) is itself inflated by the
+same convexity that broke Prediction A -- so B's low ratio (0.142) reflects both
+under-powering and a mis-specified theory-side denominator, not clean evidence the
+log-normal identity is wrong.
+
+**Prediction C (informational): result stands, and independently favors finite-width over
+finite-depth-saturation.** Reproduced exactly -- per-layer `E[phi'^2]` shows a short
+transient in the first ~5 layers then sits flat at the mean-field fixed-point value
+(0.47458) for the remaining ~355 layers with no downward drift, even while per-seed
+gradient-log-variance explodes to ~11.7 by depth 362. For tanh, saturation would drive
+`phi'^2 -> 0`; there is no such trend. This is the finite-width signature (finite-sample
+gradient fluctuations blowing up around an *unchanged* mean-field forward trajectory), not
+the finite-depth-saturation alternative.
+
+**Verdict, adopting the review's framing: falsified as specified, but with the pre-
+registered bands miscalibrated for this depth/width regime in diagnosed, non-arbitrary
+ways (Prediction A tested a leading-order-only law outside its `depth/width<<1` validity
+range; Prediction B was underpowered at 50 seeds and its theory-side denominator inherited
+A's convexity bias) -- and every qualitative diagnostic that *is* cleanly resolvable
+(width-monotone variance suppression, a steeper-than-leading-order-but-consistently-signed
+width exponent, and Prediction C's stationary forward statistics) points toward finite-width
+theory and away from finite-depth-saturation, not toward refuting the mechanism entirely.**
+Per this repo's pre-registration rule, the original bands are not edited after the fact --
+the literal verdict is falsified. A properly powered re-test (a variance-growth estimator
+that respects convexity, e.g. fitting `Var/width` vs. `depth/width` directly or restricting
+to the near-linear early-depth window; the *same* regression estimator on both sides of the
+mean/median gap; and an order of magnitude more seeds before `gap_emp`'s sign is resolvable
+at the larger widths) would need its own fresh pre-registration, not a re-label of this
+thread. Not pursued as a separate thread for now -- the disambiguating question this thread
+and Prediction C were built to answer (finite-width vs. finite-depth-saturation) already has
+a fairly clear qualitative answer favoring finite-width, which is the actionable output;
+revisit with a properly-scaled re-test only if a future thread specifically needs the
+quantitative magnitude of the criticality sub-line's residual bias.
