@@ -431,6 +431,29 @@ scalar gate, and Zoology's capacity lower bound is about *state* capacity, which
 address. Prediction B not run for arm (b) (per pre-registration, only runs on an A-pass).
 See `docs/threads/17-recall-mechanism-ladder.md`'s dated addendum for the full account.
 
-**Immediate next step:** thread 17's arm (a) — two stacked gated blocks, testing the
-composition hypothesis. Already pre-registered as part of thread 17's doc; no new
-pre-registration needed, just build and run.
+**Arm (a) (two stacked gated blocks) run 2026-07-07: falsified as specified — cleanly
+this time, but still not a fair test of the broader composition hypothesis.** Best config
+(lr=3e-4) reached 0.0227 mean accuracy — far below 0.30, but (unlike arm (b)) squarely
+inside the same noisy ~0.02-0.032 band every single-layer gate-family variant has landed
+in, not a below-baseline regression. An Opus review (reproduced the best config exactly,
+added per-block gradient/signal diagnostics) found the literal construction — two of
+thread 9's exact, unmodified blocks stacked — is a clean, fair falsification as specified.
+But it also found a depth-2-specific optimization pathology: block1's near-closed gate
+(by design) attenuates its own output 36x before it reaches block2, starving block2's gate
+of gradient (~167x weaker than a single-block control at init) and pinning both gates near
+their closed init through step 500 of a 2000-step budget — the standard fix (residual
+connections, inter-block normalization) is exactly what this minimal, faithful-to-thread-9
+construction omits by design. **Verdict: the narrow claim (does naive unmodified stacking
+help) is cleanly falsified; the broader composition hypothesis was never given a fair shot
+within this budget and would need a residual/normalized variant under its own fresh
+pre-registration.** Every failed arm in the sub-line so far (9/10/11/16, 17a, 17b) converges
+to a training loss near `ln(512)=6.238` — not even fitting the training distribution,
+reinforcing these are optimization/capacity failures, not eval artifacts.
+
+**Immediate next step:** thread 17's arm (c) — a DeltaNet-style outer-product matrix state
+with spectrally-constrained decay. Both arm reviews independently converged on this as the
+most promising remaining probe: a single-block change (sidesteps both arm (a)'s and (b)'s
+optimization confounds) that directly targets Zoology's diagnosed bottleneck — state
+*capacity* (`~hidden^2` for a matrix state vs. `~hidden` for a vector state) — the
+mechanism the literature has the highest confidence in for recall at this scale. Already
+pre-registered as part of thread 17's doc; needs a new model file (not yet built).

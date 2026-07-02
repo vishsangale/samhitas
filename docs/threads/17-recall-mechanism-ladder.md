@@ -265,3 +265,67 @@ doesn't obviously fix -- arms (a) (composition) and (c) (matrix-valued state) ar
 mechanistically more likely to actually clear prediction A's bar. Not pursued further under
 this thread's arm (b) label. Prediction B not run for arm (b) (correctly, per the
 pre-registration -- only runs on an A-pass).
+
+**Post-hoc note, 2026-07-07, arm (a) two stacked gated blocks
+(`scripts/thread17_arm_a_composition.py`): prediction A falsified as specified -- a clean
+result on the literal construction, but not a fair test of the broader composition
+hypothesis.**
+
+Full grid (5 LRs x 5 seeds x 2000 steps) ran in ~11 min CPU. **Best config (lr=3e-4): mean
+accuracy 0.0227** across 5 seeds -- far below the 0.30 target, but this time *not* a
+dramatic regression below the existing controls the way arm (b) was: 0.0227 sits inside the
+same noisy ~0.02-0.032 band every single-layer gate-family variant has landed in (ungated
+0.020, thread 9 gated 0.032, thread 11 dual-gate 0.032, thread 16 0.0316), with overlapping
+per-seed spread. Accuracy degraded monotonically as LR increased (0.0227 at lr=3e-4 down to
+0.0000 at lr>=1e-2), the opposite of the pattern expected if the model just needed a more
+aggressive LR to escape a plateau. **Prediction A: FAIL.**
+
+Sent to an independent Opus review before drawing a conclusion. The review reproduced the
+best config exactly (per-seed accuracies matched to the digit) and the high-LR collapse,
+then added diagnostics the driver didn't collect (per-block gate-gradient norms and
+block1's output-signal magnitude across training):
+
+1. **No wiring/dimensional bug** -- block1's full state sequence correctly feeds block2 as
+   its input sequence, the standard semantics for stacked recurrent/SSM layers.
+2. **But block1's near-closed init (by design, matching thread 9's careful "start close to
+   baseline" convention) makes it emit a heavily attenuated signal early in training**: at
+   init, embedding vectors have norm ~7.98/std~1.00, while block1's *output* (block2's
+   input) has norm ~0.22/std~0.028 -- a **36x attenuation**. This measurably starves
+   block2's gate of gradient: block2's gate weight-gradient norm at init is ~1.59e-4, vs.
+   ~2.66e-2 for a single-block thread-9 control (a **~167x** deficit, ~8x weaker even than
+   block1's own gate). Both gates stay pinned near their closed init through step 500 (mean
+   open 0.0186-0.0221, barely above the 0.018 init) and only "wake up" near step 1999 --
+   far too late in a 2000-step budget to matter.
+3. **The LR-degradation pattern is consistent with this being an optimization-stability
+   problem, not an under-driven plateau**: at higher LR, loss gets stuck at
+   `ln(512)=6.238` (uniform-distribution loss) rather than improving, the signature of
+   destabilization rather than a plateau that a stronger push would clear.
+
+**Verdict (Opus review, adopted here): the literal pre-registered construction -- "two of
+thread 9's exact, unmodified blocks, stacked" -- is falsified cleanly and fairly as
+specified; this part of the record needs no qualification the way arm (b) did.** But this
+is **not a fair test of the broader composition hypothesis** ("can two layers detect and
+act on key-matches that one layer provably cannot"), because the exact machinery real
+stacked recurrent models use to make depth trainable -- residual/skip connections,
+inter-block normalization, and not stacking two saturated-closed gates back to back -- is
+precisely what this minimal construction omits by design (faithfully reusing thread 9's
+block unmodified, as pre-registered). The representational question never got a fair shot
+within this budget because a depth-2-specific optimization pathology (block1's near-closed
+gate attenuating its own output 36x, starving block2) dominates. A residual/normalized
+depth-2 variant that fairly tests composition would need its own fresh pre-registration per
+this repo's no-retrofit rule -- not pursued now.
+
+**Convergent signature worth noting across the sub-line:** every failed arm so far
+(threads 9/10/11/16's arms, thread 17's arms a and b) converges to a final training loss
+near `ln(512)=6.238` -- the model isn't even fitting the *training* distribution in these
+failure cases, reinforcing that these are optimization/capacity failures during training
+itself, not an overfitting or eval-only artifact.
+
+**Decision: moving to arm (c) (DeltaNet-style outer-product matrix state).** Both this
+review and arm (b)'s independently converged on the same recommendation: arm (c) is a
+*single-block* change (sidestepping both arm (b)'s untrained-add-on-module starvation and
+arm (a)'s inter-block attenuation entirely) and directly targets the literature's actual
+diagnosed bottleneck -- Zoology's *state capacity* bound (a matrix state scales as
+`~hidden^2`, vs. a vector state's `~hidden`) -- the mechanism the literature has the
+highest confidence in for recall at this scale. Prediction B not run for arm (a) (per
+pre-registration, only runs on an A-pass).

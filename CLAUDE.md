@@ -312,6 +312,29 @@ are mechanistically more likely to actually address. Prediction B not run for ar
 the pre-registration (only runs on an A-pass). See the thread 17 doc's dated addendum for
 the full account.
 
-**Next step: thread 17's arm (a)** — two stacked gated blocks (the composition hypothesis),
-already pre-registered as part of the thread 17 doc; build and run, no new pre-registration
-needed. Not yet started.
+Arm (a) (two stacked gated blocks, composition hypothesis) was then built and run. Full
+grid (5 LRs x 5 seeds, 2000 steps) ran in ~11 min CPU. **Best config (lr=3e-4) reached
+0.0227 mean accuracy** -- far below 0.30, but this time squarely inside the same noisy
+~0.02-0.032 band every single-layer gate-family variant has landed in, not a below-baseline
+regression like arm (b)'s. An independent Opus review (reproduced the best config exactly,
+added per-block gradient/signal diagnostics) found the literal construction -- two of
+thread 9's exact, unmodified blocks stacked -- is cleanly and fairly falsified as specified.
+But it also found a depth-2-specific optimization pathology: block1's near-closed gate
+attenuates its own output 36x before it reaches block2, starving block2's gate of gradient
+(~167x weaker than a single-block control at init) and pinning both gates near their closed
+init through half the training budget -- the standard fix (residual connections, inter-
+block normalization) is exactly what this minimal, faithful-to-thread-9 construction omits
+by design. **Verdict: the narrow claim (does naive unmodified stacking help) is cleanly
+falsified; the broader composition hypothesis was never given a fair shot within this
+budget** and would need a residual/normalized variant under its own fresh pre-registration.
+Every failed arm in the sub-line so far (9/10/11/16, 17a, 17b) converges to a training loss
+near `ln(512)=6.238` -- optimization/capacity failures, not eval artifacts. See the thread
+17 doc's dated addendum for the full account.
+
+**Next step: thread 17's arm (c)** — a DeltaNet-style outer-product matrix state with
+spectrally-constrained decay, already pre-registered as part of the thread 17 doc. Both arm
+reviews independently converged on this as the most promising remaining probe: a
+single-block change that sidesteps both arm (a)'s and (b)'s optimization confounds and
+directly targets Zoology's diagnosed bottleneck -- state *capacity* (`~hidden^2` for a
+matrix state vs. `~hidden` for a vector state) -- the mechanism the literature has the
+highest confidence in for recall at this scale. Needs a new model file; not yet built.

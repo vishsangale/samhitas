@@ -39,6 +39,7 @@ experiments/
     thread15_finite_width_fluctuation.py  # idea I2, see finding below -- built
     thread16_generous_budget_gate_check.py  # idea I4, see finding below -- built
     thread17_arm_b_shortconv.py  # idea I3 arm (b), see finding below -- built
+    thread17_arm_a_composition.py  # idea I3 arm (a), see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
@@ -346,6 +347,28 @@ gate, while Zoology's capacity bound is about *state* capacity, which arms (a)/(
 mechanistically more likely to address. Prediction B not run (per pre-registration, A-pass
 required). Full account in `docs/threads/17-recall-mechanism-ladder.md`'s dated addendum.
 
+## Thread 17 arm (a) finding (2026-07-07, CPU, `scripts/thread17_arm_a_composition.py`) — cleanly falsified, but composition itself not fairly tested
+
+Second arm of the recall-mechanism ladder: two of thread 9's exact, unmodified gated
+blocks stacked (composition hypothesis). Full grid (5 LRs x 5 seeds) ran in ~11 min CPU.
+**Best config (lr=3e-4) reached 0.0227 mean accuracy** -- far below 0.30, but this time
+squarely inside the same noisy ~0.02-0.032 band every single-layer gate-family variant has
+landed in, not a below-baseline regression like arm (b). An Opus review (reproduced the
+best config exactly, added per-block gradient/signal diagnostics) found the literal
+construction is cleanly and fairly falsified as specified -- but also found a depth-2-
+specific optimization pathology: block1's near-closed gate attenuates its own output 36x
+before it reaches block2, starving block2's gate of gradient (~167x weaker than a
+single-block control at init) and pinning both gates near their closed init through half
+the training budget. The standard fix (residual connections, inter-block normalization)
+is exactly what this minimal construction omits by faithfully reusing thread 9's block
+unmodified, as pre-registered. **Verdict: the narrow claim is cleanly falsified; the
+broader composition hypothesis was never given a fair shot within this budget.** Every
+failed arm in the sub-line so far converges to a training loss near `ln(512)=6.238` --
+optimization/capacity failures, not eval artifacts. Moving to arm (c) next -- both arm
+reviews independently recommend it as a single-block change that sidesteps both
+confounds and directly targets Zoology's state-capacity bottleneck. Full account in
+`docs/threads/17-recall-mechanism-ladder.md`'s dated addendum.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
@@ -391,8 +414,10 @@ also done -- 6x budget bought zero held-out-accuracy gain (gate-family sub-line 
 reopen), but corrected the prior record's "no discoverable gradient signal" phrasing (the
 gate does move substantially given more budget, just toward a copy shortcut, not recall).
 Rank-4 (recall-mechanism ladder, thread 17) is pre-registered (all three arms: composition,
-short-conv, DeltaNet-style state, carrying thread 9's deferred prediction B) and arm (b) is
-run -- falsified as specified, but the shift-primitive claim wasn't fairly tested (a
-confounded conv init, not a clean negative result). Next: build and run arm (a), already
-pre-registered in `docs/threads/17-recall-mechanism-ladder.md`, no new pre-registration
-needed. See `RESEARCH.md` section 8 for the full status.
+short-conv, DeltaNet-style state, carrying thread 9's deferred prediction B); arms (b) and
+(a) are both run and both falsified (arm (b): a confounded conv init, not a clean negative
+result; arm (a): cleanly falsified as specified, but the broader composition hypothesis
+wasn't fairly tested due to a depth-2 gradient-starvation pathology). Next: build and run
+arm (c) (DeltaNet-style outer-product state), already pre-registered in
+`docs/threads/17-recall-mechanism-ladder.md`, needs a new model file. See `RESEARCH.md`
+section 8 for the full status.
