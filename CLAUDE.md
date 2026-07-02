@@ -23,11 +23,17 @@ and environment notes established during development, not a restatement of the p
 
 ## Git workflow
 
-- Work directly on `dev`, push there (`git push -u origin dev`). No per-task feature
-  branches — explicit user instruction, given only one person works on this repo. The
-  original harness-assigned branch (`claude/neural-arch-math-foundations-ljiv0s`) was
-  renamed to `dev`; an old remote ref with the original name may still exist as a stale,
-  harmless artifact.
+- Work directly on `main`, push there (`git push -u origin main`). No per-task feature
+  branches — explicit user instruction, given only one person works on this repo.
+  History of this convention: the original harness-assigned branch was renamed to `dev`
+  (2026-07-01 sessions), and on 2026-07-08 the user asked for everything to live on
+  `main`, which was created from `dev`'s head — `main` is canonical from here on. Note:
+  the GitHub *default branch* setting still points at `dev` and can only be flipped to
+  `main` in the repo's GitHub settings (Settings → General → Default branch), not from
+  git — until the user flips it, keep `dev` fast-forwarded to the same commit as `main`
+  when pushing, so fresh clones don't land behind. Stale remote refs that are safe to
+  delete whenever the user wants: `claude/review-ideas-results-pju2sq` (fully contained
+  in main's history), any `claude/*` session branches at or behind `main`.
 - Commit each validated increment separately (fix → smoke-test → commit; don't batch
   several days of work into one diff). Write commit messages that explain *why*, matching
   the detail level already in `git log` — these commits are also the project's lab notebook.
