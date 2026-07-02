@@ -287,11 +287,31 @@ architectural-insufficiency reading (Zoology, portfolio review section 2.2) over
 "just needed more steps" one. Gate-family sub-line does not reopen. See the thread 16 doc's
 dated addendum for the full account.
 
-**Next step: idea I3 from the portfolio review's ranked list** — a new recall-mechanism
-thread (two-layer composition / short-conv / DeltaNet-style state, three pre-registered arms
-on the unchanged recall task at n_pairs=8) carrying thread 9's still-deferred prediction B:
-once an arm actually learns recall, does the trained model's gradient-flow boundary stay
-within factor-2 of the ungated spectral bound (does predictability survive learned
-selectivity)? This is the portfolio's first genuinely new mechanism since thread 9, not
-another measurement-refinement follow-up. Needs its own pre-registered thread doc before any
-code. Not yet started.
+As of 2026-07-07 (continued): idea I3 was pre-registered as thread 17
+(`docs/threads/17-recall-mechanism-ladder.md`, three arms -- composition, short-conv,
+DeltaNet-style state -- carrying thread 9's still-deferred prediction B), and its first arm
+(b, short causal conv on top of thread 9's existing gated recurrence, unmodified) was built
+and run. Full grid (3 kernel sizes x 5 LRs x 5 seeds, 2000 steps) ran in ~22 min CPU.
+**Prediction A falsified as specified** -- best config reached only 0.0109 mean accuracy,
+below every existing gate-family control (0.02-0.032), not just short of the 0.30 target.
+An independent Opus review (reproduced every number, added gradient/init diagnostics the
+driver didn't collect) found this doesn't refute the literature's shift-primitive
+prediction: the conv's default random init plus a GELU starves the downstream gate of
+training gradient (~7x attenuation, measured directly), shifting the effective LR optimum
+up ~10x and capping the reachable accuracy below what the no-conv model already reached at
+its own best LR -- a genuine, named, fixable confound (an untrained scrambling filter in
+front of the gate, not a fair test of "does a shift primitive help"). Init-time diagnostics
+separately ruled out a different concern: the conv does not disturb thread 9's careful
+near-baseline gate init. **Per the pre-registered ladder's own design (arms are
+independent), moving on to arm (a) (two stacked gated blocks, composition hypothesis)
+rather than retrying arm (b) with a corrected init** -- the review also flagged a standing
+reason not to over-invest in a conv-only fix regardless of init quality: a short conv only
+widens the *input* window feeding a single scalar gate, while Zoology's capacity lower
+bound is fundamentally about *state* capacity, which arms (a) and (c) (matrix-valued state)
+are mechanistically more likely to actually address. Prediction B not run for arm (b), per
+the pre-registration (only runs on an A-pass). See the thread 17 doc's dated addendum for
+the full account.
+
+**Next step: thread 17's arm (a)** — two stacked gated blocks (the composition hypothesis),
+already pre-registered as part of the thread 17 doc; build and run, no new pre-registration
+needed. Not yet started.

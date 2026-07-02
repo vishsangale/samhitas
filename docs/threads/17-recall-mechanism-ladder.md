@@ -192,7 +192,76 @@ prediction B, not a new claim invented for this thread.
 
 ## Status
 
-Not yet run. Pre-registered 2026-07-07 (session-label date, per this repo's now-standard
-doc-date-vs-commit-date convention). Arms will be run and logged in ladder order (b, then
-a, then c); each arm's result gets its own dated post-hoc note below as it completes, per
-this repo's incremental-commit discipline -- not all three at once.
+Pre-registered 2026-07-07 (session-label date, per this repo's now-standard doc-date-vs-
+commit-date convention). Arms are run and logged in ladder order (b, then a, then c); each
+arm's result gets its own dated post-hoc note below as it completes, per this repo's
+incremental-commit discipline.
+
+**Post-hoc note, 2026-07-07, arm (b) short causal conv (`scripts/thread17_arm_b_shortconv.py`):
+prediction A falsified as specified -- but an Opus review found the construction has a
+real, named confound, so the literature's shift-primitive claim is not fairly tested by
+this result.**
+
+Full grid (3 kernel sizes x 5 LRs x 5 seeds x 2000 steps) ran in ~22 min CPU. **Best config
+(kernel_size=4, lr=3e-3): mean accuracy 0.0109** across 5 seeds -- far below the 0.30
+target, and, surprisingly, *below* every already-collected gate-family control (thread 9's
+gated_orthogonal 0.032, thread 11's dual-gate 0.032, thread 16's 12k-step run 0.0316,
+ungated orthogonal 0.020). **Prediction A: FAIL**, decisively.
+
+Sent to an independent Opus review before drawing a conclusion, since a result *worse* than
+every existing control was surprising and warranted checking for an implementation issue
+rather than taking it at face value. The review reproduced the reported numbers exactly,
+independently re-ran the no-conv control in its own environment (matched thread 9's stored
+0.032), and added diagnostics the driver didn't collect:
+
+1. **The conv does not disturb the gate's careful near-baseline init** (ruling out one
+   candidate explanation directly): at init, gradient-flow effective decay rates for
+   kernel_size=2/3/4 (0.91/0.93/0.94) are, if anything, *closer* to ungated orthogonal's
+   0.90 than the no-conv gated model's own 0.88 -- all comfortably "healthy" by thread 1's
+   band. The conv's random init actually pushes the gate slightly more closed at init
+   (conv output std ~0.35-0.42 vs. the raw embedding's 1.0), not more open.
+2. **But the conv does starve the gate of training-time gradient signal, by a measured
+   ~7x, and this is corroborated behaviorally, not just in raw gradient norm.** Gate
+   weight-gradient norm averaged over the first 100 steps at lr=3e-3: no-conv 3.5e-2 vs.
+   conv (k=4) 5.2e-3. Matched-LR comparison across the shared grid found the conv shifts
+   the model's *effective optimal LR* up by ~10x (no-conv peaks at 3e-4 with 0.032; conv
+   only reaches its ceiling of ~0.011 at 3e-3, where the two arms become statistically
+   indistinguishable) and caps the reachable accuracy below the no-conv model's low-LR
+   plateau at every LR the no-conv model actually uses well -- the signature of a
+   downstream module (the gate) training less effectively per step because its input has
+   been scrambled by an untrained random-init conv layer followed by GELU (which zeros
+   roughly half its inputs).
+3. **The regression is real at matched low LR (no seed overlap: control's minimum 0.0254 >
+   conv's maximum 0.0117 at lr=3e-4), not floor noise** -- both arms are meaningfully above
+   the ~0.002 chance floor, so this is a genuine learned difference, not sampling noise at
+   tiny probabilities. But it is not uniform: at lr=3e-3 the two arms are statistically
+   identical, so the honest framing is "conv shifted the LR optimum and capped the
+   ceiling," not "conv uniformly poisons the model."
+
+**Verdict (Opus review, adopted here): prediction A is correctly falsified as specified --
+0.0109 is nowhere near 0.30 and the pre-registered bar's literal grading stands. But the
+literature's "short-conv should help multi-pair recall" claim is NOT meaningfully tested or
+refuted by this specific result**, because the construction has a concrete, fixable
+confound: a default-random-initialized depthwise conv followed by GELU starts as a
+scrambling filter that destroys token identity and starves the downstream gate of gradient,
+rather than as a near-identity pass-through the model could refine from -- unlike the
+literature's own short-conv constructions (e.g. Mamba's `conv1d`), which are deliberately
+initialized/structured not to disturb the rest of the model at init. The gate is being
+asked to learn to use a moving, gradient-poor signal rather than starting from something
+close to the raw embeddings it already (barely) knew how to use. This is a genuine,
+specific implementation confound, not a vague "needs more tuning" excuse.
+
+**Decision, per the pre-registered ladder's own design (arms are independent; one arm
+failing A does not block the next): moving on to arm (a) (two stacked gated blocks) as
+originally planned, not retrying arm (b).** A near-identity-init retry of the conv (last
+kernel tap = 1, others = 0, reconsidering GELU vs. a gentler activation) is a legitimate,
+well-motivated follow-up if the shift-primitive question specifically needs closing later,
+but per this repo's no-retrofit rule it would need its own fresh pre-registration, not a
+silent redo under this thread's label -- and the review also flagged a standing reason not
+to over-invest in it regardless of init: a short conv only widens the *input* window
+feeding a single scalar gate and a rank-1-ish vector state, and Zoology's `m >= N/2p`
+lower bound is fundamentally about *state* capacity, which a better-initialized conv
+doesn't obviously fix -- arms (a) (composition) and (c) (matrix-valued state) are
+mechanistically more likely to actually clear prediction A's bar. Not pursued further under
+this thread's arm (b) label. Prediction B not run for arm (b) (correctly, per the
+pre-registration -- only runs on an A-pass).

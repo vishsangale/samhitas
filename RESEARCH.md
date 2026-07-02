@@ -407,8 +407,30 @@ recall.** This strengthens the architectural-insufficiency reading (Zoology, por
 review section 2.2) over a pure "just needed more steps" one. Sub-line does not reopen. See
 `docs/threads/16-generous-budget-gate-check.md`'s dated addendum for the full account.
 
-**Immediate next step:** rank-4 item from the portfolio review — idea I3, a new
-recall-mechanism thread (two-layer composition / short-conv / DeltaNet-style state) carrying
-thread 9's still-deferred prediction B (does predictability survive learned selectivity, once
-an arm actually learns recall). Needs its own pre-registered thread doc before code. Not yet
-started.
+**Thread 17 (rank-4 item, minimal recall mechanism ladder) pre-registered and arm (b)
+(short causal conv) run 2026-07-07: falsified as specified, but the shift-primitive claim
+was not fairly tested.** Three-arm ladder (composition / short-conv / DeltaNet-style state)
+on the unchanged recall task at `n_pairs=8`, carrying thread 9's still-deferred prediction B
+(does predictability survive learned selectivity, once an arm actually learns recall). Arm
+(b), run first (cheapest): a depthwise causal conv inserted before thread 9's existing gated
+recurrence. **Best config reached only 0.0109 mean accuracy — below every existing
+gate-family control (0.02-0.032), not just short of the 0.30 target.** An Opus review
+(reproduced every number, added gradient/init diagnostics) found this is not evidence
+against the literature's shift-primitive prediction: the conv's default random init plus a
+GELU starves the downstream gate of training gradient (~7x attenuation), shifting the
+model's effective LR optimum up ~10x and capping its ceiling below what the no-conv model
+already reached at its own best LR — a genuine, named, fixable confound (a near-identity
+conv init would test the primitive fairly; this one tested "an untrained scrambling filter
+in front of the gate" instead). Init-time diagnostics ruled out the alternative concern
+(the conv does not disturb thread 9's careful near-baseline gate init). **Per the
+pre-registered ladder's own design (arms are independent), moving on to arm (a) rather than
+retrying arm (b)** — the review also noted a standing reason not to over-invest in a
+conv-only fix regardless: a short conv only widens the *input* window feeding a single
+scalar gate, and Zoology's capacity lower bound is about *state* capacity, which arms (a)
+(composition) and (c) (matrix-valued state) are mechanistically more likely to actually
+address. Prediction B not run for arm (b) (per pre-registration, only runs on an A-pass).
+See `docs/threads/17-recall-mechanism-ladder.md`'s dated addendum for the full account.
+
+**Immediate next step:** thread 17's arm (a) — two stacked gated blocks, testing the
+composition hypothesis. Already pre-registered as part of thread 17's doc; no new
+pre-registration needed, just build and run.

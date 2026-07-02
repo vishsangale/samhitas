@@ -38,6 +38,7 @@ experiments/
     thread14_mup_coordinate_check.py  # idea I1, see finding below -- built
     thread15_finite_width_fluctuation.py  # idea I2, see finding below -- built
     thread16_generous_budget_gate_check.py  # idea I4, see finding below -- built
+    thread17_arm_b_shortconv.py  # idea I3 arm (b), see finding below -- built
   runs/                # experiment outputs, gitignored except .gitkeep
 
   # planned, not yet built:
@@ -323,6 +324,28 @@ solving recall.** Strengthens the architectural-insufficiency reading (Zoology) 
 budget-artifact one; sub-line does not reopen. Full account in
 `docs/threads/16-generous-budget-gate-check.md`'s dated addendum.
 
+## Thread 17 arm (b) finding (2026-07-07, CPU, `scripts/thread17_arm_b_shortconv.py`) — falsified as specified, shift-primitive claim not fairly tested
+
+First arm of the recall-mechanism ladder (idea I3): a depthwise causal conv (k=2-4)
+inserted before thread 9's existing gated recurrence, unmodified. Full grid (3 kernel
+sizes x 5 LRs x 5 seeds) ran in ~22 min CPU. **Best config reached only 0.0109 mean
+accuracy -- below every existing gate-family control (0.02-0.032), not just short of the
+0.30 target.** An Opus review (reproduced every number, added gradient/init diagnostics
+the driver didn't collect) found this doesn't refute the literature's shift-primitive
+prediction: the conv's default random init plus a GELU starves the downstream gate of
+training gradient (~7x attenuation measured directly), shifting the effective LR optimum
+up ~10x and capping the reachable accuracy below what the no-conv model already reached at
+its own best LR -- a genuine, fixable confound (an untrained scrambling filter in front of
+the gate, not a fair test of a shift primitive). Init-time diagnostics separately ruled out
+a different concern: the conv does not disturb thread 9's careful near-baseline gate init
+(effective decay rates at init are, if anything, closer to ungated orthogonal than the
+no-conv gated model's own). **Per the pre-registered ladder's design (arms are
+independent), moving on to arm (a) rather than retrying arm (b)** with a corrected init --
+the review also noted a short conv only widens the *input* window feeding a single scalar
+gate, while Zoology's capacity bound is about *state* capacity, which arms (a)/(c) are
+mechanistically more likely to address. Prediction B not run (per pre-registration, A-pass
+required). Full account in `docs/threads/17-recall-mechanism-ladder.md`'s dated addendum.
+
 ## Non-negotiables carried over from `docs/methodology.md` (tightened after review)
 
 - Every comparison reports **both** FLOPs and measured wall-clock, with the FLOP-counting
@@ -367,6 +390,9 @@ pre-registration if picked up later). Rank-3 (generous-budget gate check, thread
 also done -- 6x budget bought zero held-out-accuracy gain (gate-family sub-line does not
 reopen), but corrected the prior record's "no discoverable gradient signal" phrasing (the
 gate does move substantially given more budget, just toward a copy shortcut, not recall).
-Remaining ranked item: (4) a new recall-mechanism thread (composition / short-conv /
-DeltaNet-style state, carrying thread 9's deferred prediction B) — needs its own
-pre-registered thread doc before code. See `RESEARCH.md` section 8 for the full status.
+Rank-4 (recall-mechanism ladder, thread 17) is pre-registered (all three arms: composition,
+short-conv, DeltaNet-style state, carrying thread 9's deferred prediction B) and arm (b) is
+run -- falsified as specified, but the shift-primitive claim wasn't fairly tested (a
+confounded conv init, not a clean negative result). Next: build and run arm (a), already
+pre-registered in `docs/threads/17-recall-mechanism-ladder.md`, no new pre-registration
+needed. See `RESEARCH.md` section 8 for the full status.
