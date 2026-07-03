@@ -522,4 +522,9 @@ threads pre-registered no prior pass-probabilities, so they are not retro-scored
 
 | Thread / prediction | Stated p(pass) | Outcome |
 |---|---|---|
-| — | — | — |
+| 18, Arm 1 (attention clears 0.30 at standard 2000-step budget) | 0.62 (adopted after design-review reconciliation; originally 0.70) | pending |
+| 18, overall (protocol validated: Arm 1 passes, or Arms 2+3 both pass) | 0.87 (adopted; originally 0.85) | pending |
+
+(Per-row detail, including the harness-defect-row estimate (~0.05) and the independent
+design review's own reconciled numbers, is in `docs/threads/18-recall-protocol-validation.md`'s
+"Stated prior pass-probability" and "Independent pre-run design review" sections.)
