@@ -320,34 +320,71 @@ training; positive-control SP expected to fail):
   thread 14's own sweep showed between its 0.3 and 0.1 points); `hidden_1` and `proj` show
   the same pattern. Recurrence's `recur_final` shows the same clean shrink (`0.244 -> 0.119
   -> 0.011`, fully flat by LR=0.001).
-- **One genuine, unresolved anomaly, flagged rather than smoothed over:** recurrence's
-  `readout_pre_mult` does **not** show this shrinking pattern — it stays at log-log slope
-  `0.415 -> 0.448 -> 0.301` across the same tenfold LR range, never trending toward the 0.15
-  bar the way every other signal (including the MLP's directly analogous `output_pre_mult`,
-  which shrank 0.860 -> 0.351 -> 0.253 over the same LR range) does. This is a real,
-  measured difference between the two models' otherwise-structurally-similar output-type
-  layers, not noise — repeated at all three LR points. Leading hypothesis (not confirmed):
-  this connects to the theta-LR-exponent uncertainty flagged above, since the readout sits
-  downstream of the recurrence's evolving state, which depends on theta specifically. An
-  isolating test was designed (train normally vs. freeze theta's LR to exactly 0, compare
-  `readout_pre_mult`'s slope) but did not complete — it hit severe CPU contention from
-  thread 18's concurrently-running arm-rerun processes on this session's shared 4-core
-  sandbox (load average ~9-10 observed), and per `CLAUDE.md`'s own logged lesson about
-  contention producing misleading numbers, it was not worth forcing through under those
-  conditions rather than re-queuing it properly. **This is reported honestly as untested,
-  not resolved** — a leading hypothesis with one piece of indirect corroborating evidence
-  (the readout-specific, theta-downstream pattern), not a finding. It does not block
-  freezing the protocol below (thread 6's real prediction is about steps-to-target-loss
-  under a multi-hundred/thousand-step LR sweep, not a 10-step activation-flatness reading),
-  but it is the first thing to revisit if the recurrence arm's real-run reading looks odd
-  specifically at small width or specifically differs from the MLP arm's pattern.
+- **One genuine anomaly, flagged rather than smoothed over — cause since independently
+  tested and narrowed (see the reconciliation note below):** recurrence's
+  `readout_pre_mult` does **not** show this shrinking pattern — at read LR
+  `{0.01, 0.003, 0.001}` (the sub-range actually cited here; the full swept grid was
+  `{0.03, 0.01, 0.003, 0.001}`) it plateaus around log-log slope `0.415 -> 0.448 -> 0.301`,
+  never trending toward the 0.15 bar the way every other signal (including the MLP's
+  directly analogous `output_pre_mult`, which shrank `0.860 -> 0.351 -> 0.253` over the same
+  three LR points) does. This is a real, measured difference between the two models'
+  otherwise-structurally-similar output-type layers, not noise — repeated at all three LR
+  points, and later reproduced independently (below) with a matched-width control ruling out
+  a fit-point-count artifact.
+
+**Independent-review reconciliation, 2026-07-03 (this addendum's isolating test, run by the
+review since the original prep hit contention before completing it):** the leading
+hypothesis originally stated here — that the anomaly connects to `theta`'s un-derived LR
+exponent — **is refuted, not just untested.** The review ran the isolating test as designed
+(train normally vs. freeze `theta`'s Adam LR group to exactly 0, i.e. `theta` pinned at its
+init value throughout training) and found freezing `theta` does **not** flatten
+`readout_pre_mult`: at read-LR 0.01 the slope gets *worse* (`0.415 -> 0.927`), and at 0.003
+it's essentially unchanged (`0.448 -> 0.331`, still ~2x the bar). `theta`'s LR is therefore
+**not** the driver — this repo's own recurring "wrong causal explanation for a real effect"
+failure mode (see thread 12's chaotic-phase story for the prior instance), caught here before
+it misdirected any future debugging. The review also ran a matched-width control (both arms
+re-fit over the identical 5 widths `{64,128,256,512,1024}`, removing the "MLP fits 5 points,
+recurrence fits 3" confound) and found the anomaly survives: MLP still shrinks
+(`0.946 -> 0.876 -> 0.308`), recurrence still plateaus (`0.620 -> 0.464 -> 0.457`) — a real
+property of the recurrence readout, not a fitting artifact. **Corrected status: real,
+reproduced three independent ways, cause unknown** (not "theta's LR, pending a blocked
+test") — no other candidate cause has been tested yet. The review's own materiality
+assessment, independent of the original prep's argument for the same conclusion: still does
+not block handoff, and with higher confidence than originally stated, because (1) the
+decisive init-time reading is clean and the theta-init resolution reproduces exactly
+(`+0.026` muP vs. `+0.514` SP, identical at every LR tested), (2) the anomaly lives entirely
+in a 10-step activation-scale transient — 0.5% of the up-to-2000-step horizon the real
+prediction (steps-to-target-loss) actually measures — (3) the recurrence arm trains stably
+at every coordinate-checked width with no blowup, and (4) thread 6 exists to measure
+transfer imperfections, so an imperfect (but non-catastrophic) transfer signal in one
+activation statistic is exactly the kind of thing this experiment is built to detect, not
+evidence the detector itself is broken. If the real run's recurrence arm looks adverse, the
+honest next suspect list is now "something readout-specific, not yet identified" rather than
+"theta's LR" specifically.
 
 **Net judgment on "does the muP wiring check out for the new models":** yes, on the
 decisive init-time evidence and the theta-init resolution, for both arms — no implementation
-defect serious enough to block freezing the protocol. The under-training drift mostly
-follows the same benign-transient shape thread 14 already characterized, with one named,
-unresolved exception (recurrence's `readout_pre_mult`) carried forward explicitly rather
-than swept in with the rest.
+defect serious enough to block freezing the protocol, a conclusion an independent review
+reached separately and with higher confidence than this prep effort's own original argument
+for it. The under-training drift mostly follows the same benign-transient shape thread 14
+already characterized, with one named, reproduced-but-unexplained exception (recurrence's
+`readout_pre_mult`) carried forward explicitly rather than swept in with the rest, and with
+its one candidate explanation now ruled out rather than merely untested.
+
+**Rest of the independent review, briefly (full findings not repeated here):** an
+independent Opus review of this whole prep effort — code, the coordinate check, the corpus,
+and the GPU-handoff package — returned "ready to hand off as-is," no blocking issue and no
+code bug found, beyond the anomaly reconciled above. It re-verified `char_lm_mlp.py` and
+`train_charlm.py` (the two files this prep's own addendum hadn't had independently checked)
+directly against `models/mlp.py`'s already-validated muP table and confirmed no leakage,
+off-by-one, or shape bugs; re-verified the committed corpus byte-for-byte
+(1,115,394 bytes, `vocab_size()=65`, disjoint contiguous split); independently re-ran the
+GPU-handoff save-reload-aggregate round trip itself (8 tiny configs, using the script's own
+`load_results`/`run_name`/`cfg_for`, not a reimplementation) and confirmed it works; and ran
+one additional calibration probe the original prep hadn't (transferred `base_lr=3e-3` reaches
+loss `<3.0` in 74/75/75 steps at widths 256/1024/4096 — width-invariant, ruling out the one
+real remaining risk of the frozen protocol, that a large-width effective LR might stall
+training below the loosest threshold within budget).
 
 **Frozen protocol** (baked into `scripts/thread06_gpu_run.py`, calibrated from the smoke
 test above plus a separate 2000-step floor check at width=256 across LRs `{1e-3, 3e-3, 1e-2,
